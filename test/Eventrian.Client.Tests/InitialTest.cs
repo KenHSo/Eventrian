@@ -1,11 +1,10 @@
-namespace Eventrian.Client.Tests
+namespace Eventrian.Client.Tests;
+
+public class InitialTest
 {
-    public class InitialTest
+    [Fact]
+    public void Pass()
     {
-        [Fact]
-        public void Pass()
-        {
-            Assert.True(true);
-        }
+        Assert.True(true);
     }
 }

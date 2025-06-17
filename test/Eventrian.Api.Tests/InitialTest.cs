@@ -1,11 +1,10 @@
-namespace Eventrian.Api.Tests
+namespace Eventrian.Api.Tests;
+
+public class InitialTest
 {
-    public class InitialTest
+    [Fact]
+    public void Pass()
     {
-        [Fact]
-        public void Pass()
-        {
-            Assert.True(true);
-        }
+        Assert.True(true);
     }
 }
