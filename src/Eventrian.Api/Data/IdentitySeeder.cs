@@ -14,6 +14,33 @@ public class IdentitySeeder
 
     public async Task SeedAsync()
     {
-        // TODO: Add demo users seeding here later
+        // TODO: Make better demo data for production use
+        await CreateDemoUserAsync("1@1", "1", "Admin");
+        await CreateDemoUserAsync("2@2", "2", "Customer");
+    }
+
+    private async Task CreateDemoUserAsync(string email, string password, string role)
+    {
+        var user = await _userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            Console.WriteLine($"Seeding Demo {role}");
+
+            var newUser = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FirstName = "Demo",
+                LastName = role == "Admin" ? "Admin" : "Customer"
+            };
+
+            var result = await _userManager.CreateAsync(newUser, password);
+
+            if (result.Succeeded)
+                await _userManager.AddToRoleAsync(newUser, role);
+            else
+                throw new Exception($"Failed to create user {email}: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+
+        }
     }
 }
