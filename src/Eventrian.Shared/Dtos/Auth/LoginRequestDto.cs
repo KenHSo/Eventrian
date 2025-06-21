@@ -2,7 +2,7 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
-public class LoginDto
+public class LoginRequestDto
 {
     [Required]
     [EmailAddress]

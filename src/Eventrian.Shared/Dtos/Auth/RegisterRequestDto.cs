@@ -2,7 +2,7 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
-public class RegisterDto
+public class RegisterRequestDto
 {
     [Required]
     [StringLength(50)]
