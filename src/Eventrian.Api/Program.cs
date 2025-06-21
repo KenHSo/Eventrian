@@ -1,5 +1,6 @@
 using Eventrian.Api.Data;
 using Eventrian.Api.Models;
+using Eventrian.Api.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,6 +36,11 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
     options.Lockout.MaxFailedAccessAttempts = 5;
 });
+
+// Configuration binding for JWT settings
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("JwtSettings")
+);
 
 var app = builder.Build();
 
