@@ -1,4 +1,5 @@
-﻿using Eventrian.Api.Settings;
+﻿using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Settings;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;

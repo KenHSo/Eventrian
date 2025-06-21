@@ -1,4 +1,6 @@
 using Eventrian.Api.Data;
+using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Features.Auth;
 using Eventrian.Api.Models;
 using Eventrian.Api.Settings;
 using Microsoft.AspNetCore.Identity;
@@ -42,7 +44,18 @@ builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings")
 );
 
+// Auth Services
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+//builder.Services.AddScoped<IdentitySeeder>();
+
 var app = builder.Build();
+
+// Seed initial user data at startup
+using var scope = app.Services.CreateScope();
+var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+await seeder.SeedAsync();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

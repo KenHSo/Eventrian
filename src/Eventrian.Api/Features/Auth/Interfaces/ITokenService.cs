@@ -1,4 +1,4 @@
-﻿namespace Eventrian.Api.Features.Auth;
+﻿namespace Eventrian.Api.Features.Auth.Interfaces;
 
 /// <summary>
 /// Service for generating JWT access tokens.

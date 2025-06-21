@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
-using Eventrian.Api.Models;
 using Eventrian.Shared.Dtos.Auth;
+using Eventrian.Api.Features.Auth.Interfaces;
 
 namespace Eventrian.Api.Features.Auth;
 
@@ -9,68 +8,38 @@ namespace Eventrian.Api.Features.Auth;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IAuthService _authService;
 
-    public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+    public AuthController(IAuthService authService)
     {
-        _userManager = userManager;
-        _signInManager = signInManager;
+        _authService = authService;
     }
 
     [HttpPost("register")]
-    public async Task<IActionResult> RegisterAsync([FromBody] RegisterDto registerDto)
+    public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequestDto registerRequest)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var user = new ApplicationUser
-        {
-            UserName = registerDto.Email,
-            Email = registerDto.Email,
-            FirstName = registerDto.FirstName,
-            LastName = registerDto.LastName,
-        };
+        var response = await _authService.RegisterAsync(registerRequest);
 
-        var result = await _userManager.CreateAsync(user, registerDto.Password);
+        if (!response.Success)
+            return BadRequest(new { errors = response.Errors ?? new List<string> { response.Message } });
 
-        if (!result.Succeeded)
-            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
-
-        // TODO: Replace "mock-register-token" with actual JWT generated from ITokenService
-        return Ok(new AuthResponseDto
-        {
-            Token = "mock-register-token",
-            Message = "User registered successfully"
-        });
+        return Ok(response);
     }
 
     [HttpPost("login")]
-    public async Task<IActionResult> LoginAsync([FromBody] LoginDto loginDto)
+    public async Task<IActionResult> LoginAsync([FromBody] LoginRequestDto loginRequest)
     {
-        if (!ModelState.IsValid) 
+        if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
+        var response = await _authService.LoginAsync(loginRequest);
 
-        if (user == null) 
-            return Unauthorized("Invalid email or password");
+        if (!response.Success)
+            return Unauthorized(response.Message);
 
-        var result = await _signInManager.PasswordSignInAsync(
-            user, 
-            loginDto.Password, 
-            isPersistent: loginDto.RememberMe, 
-            lockoutOnFailure: true
-            );
-
-        if (!result.Succeeded)
-            return Unauthorized("Invalid email or password");
-
-        // TODO: Replace "mock-login-token" with actual JWT generated from ITokenService
-        return Ok(new AuthResponseDto {
-                Token = "mock-login-token",
-                Message = "Login successful" 
-            });
+        return Ok(response);
     }
-
 }
