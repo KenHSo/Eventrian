@@ -20,7 +20,7 @@ public class LoginResponseDto
         };
     }
 
-    public static LoginResponseDto Failure(string message, List<string>? errors = null)
+    public static LoginResponseDto FailureResponse(string message, List<string>? errors = null)
     {
         return new LoginResponseDto
         {
