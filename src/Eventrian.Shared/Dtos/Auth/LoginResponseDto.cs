@@ -7,4 +7,26 @@ public class LoginResponseDto
     public string? Email { get; set; }
     public string Message { get; set; } = string.Empty;
     public List<string>? Errors { get; set; }
+
+    public static LoginResponseDto SuccessResponse(string email, string token, string message = "Operation successful.")
+    {
+        return new LoginResponseDto
+        {
+            Success = true,
+            Email = email,
+            Token = token,
+            Message = message,
+            Errors = null
+        };
+    }
+
+    public static LoginResponseDto Failure(string message, List<string>? errors = null)
+    {
+        return new LoginResponseDto
+        {
+            Success = false,
+            Message = message,
+            Errors = errors
+        };
+    }
 }
