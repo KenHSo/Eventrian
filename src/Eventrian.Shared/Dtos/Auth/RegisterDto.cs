@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Eventrian.Shared.Dtos;
+namespace Eventrian.Shared.Dtos.Auth;
 
 public class RegisterDto
 {
@@ -25,8 +25,4 @@ public class RegisterDto
     [DataType(DataType.Password)]
     [Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
     public required string ConfirmPassword { get; set; }
-
-    [Required]
-    [Phone]
-    public required string PhoneNumber { get; set; }
 }

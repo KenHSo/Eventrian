@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Eventrian.Shared.Dtos;
+namespace Eventrian.Shared.Dtos.Auth;
 
 public class LoginDto
 {
