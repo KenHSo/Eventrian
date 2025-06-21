@@ -5,10 +5,18 @@ using Eventrian.Api.Models;
 using Eventrian.Api.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// -----------------------------
+// Configure Services
+// -----------------------------
 
 // Controllers
 builder.Services.AddControllers();
@@ -39,34 +47,92 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Lockout.MaxFailedAccessAttempts = 5;
 });
 
-// Configuration binding for JWT settings
+// Authentication JWT 
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"] 
+            ?? throw new InvalidOperationException("JWT SecretKey is not configured.")))
+    };
+});
+
+// Configuration binding
 builder.Services.Configure<JwtSettings>(
     builder.Configuration.GetSection("JwtSettings")
 );
 
-// Auth Services
+// Register application services
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-//builder.Services.AddScoped<IdentitySeeder>();
+builder.Services.AddScoped<IdentitySeeder>();
+
+// Authorization
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("CustomerOnly", policy => policy.RequireRole("Customer"));
+});
+
+// CORS
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend",
+    policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+// -----------------------------
+// Build the application
+// -----------------------------
 
 var app = builder.Build();
 
-// Seed initial user data at startup
+
+// -----------------------------
+// Seed initial data
+// -----------------------------
+
 using var scope = app.Services.CreateScope();
 var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
 await seeder.SeedAsync();
 
 
-// Configure the HTTP request pipeline.
+// -----------------------------
+// Configure Middleware Pipeline
+// -----------------------------
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// Security
 app.UseHttpsRedirection();
+app.UseCors("AllowFrontend");
+app.UseAuthentication();
 app.UseAuthorization();
 
+// Routing
 app.MapControllers();
 
 app.Run();
