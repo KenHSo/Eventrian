@@ -86,7 +86,8 @@ builder.Services.AddAuthorization(options =>
 });
 
 // CORS
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var allowedOriginsRaw = builder.Configuration["Cors:AllowedOrigins"];
+var allowedOrigins = allowedOriginsRaw?.Split(",") ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
