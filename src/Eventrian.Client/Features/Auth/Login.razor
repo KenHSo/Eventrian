@@ -1,5 +1,39 @@
-﻿
+﻿@using System.ComponentModel.DataAnnotations
+@using Eventrian.Shared.Dtos.Auth
+@inject IJSRuntime JS
+
+<EditForm Model="@LoginModel" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>Email:</label>
+        <InputText @bind-Value="LoginModel.Email" class="form-control" />
+    </div>
+
+    <div>
+        <label>Password:</label>
+        <InputText @bind-Value="LoginModel.Password" type="password" class="form-control" />
+    </div>
+
+    <div>
+        <label>
+            <InputCheckbox @bind-Value="LoginModel.RememberMe" />
+            Remember Me
+        </label>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+</EditForm>
 
 @code {
+    [Parameter]
+    public EventCallback<LoginRequestDto> OnLoginSubmit { get; set; }
 
+    private LoginRequestDto LoginModel { get; set; } = new();
+
+    private async Task HandleValidSubmit()
+    {
+        await OnLoginSubmit.InvokeAsync(LoginModel);
+    }
 }
