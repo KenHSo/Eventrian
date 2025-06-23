@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventrian.Api.UnitTests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventrian.Client.UnitTests", "test\Eventrian.Client.UnitTests\Eventrian.Client.UnitTests.csproj", "{50040EDD-B07C-4F16-94E0-C7D9AE87D1C3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Eventrian.Api.IntegrationTests", "test\Eventrian.Api.IntegrationTests\Eventrian.Api.IntegrationTests.csproj", "{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,6 +96,18 @@ Global
 		{50040EDD-B07C-4F16-94E0-C7D9AE87D1C3}.Release|x64.Build.0 = Release|Any CPU
 		{50040EDD-B07C-4F16-94E0-C7D9AE87D1C3}.Release|x86.ActiveCfg = Release|Any CPU
 		{50040EDD-B07C-4F16-94E0-C7D9AE87D1C3}.Release|x86.Build.0 = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|x64.Build.0 = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Debug|x86.Build.0 = Debug|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|x64.ActiveCfg = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|x64.Build.0 = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|x86.ActiveCfg = Release|Any CPU
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -101,6 +115,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{4F33934D-2306-4861-9FBD-923A1AD0CE1B} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
 		{50040EDD-B07C-4F16-94E0-C7D9AE87D1C3} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
+		{F7C33EDE-D7A6-4C16-B919-95BC955C50FE} = {0C88DD14-F956-CE84-757C-A364CCF449FC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B1837967-9299-42B6-8221-8732C65349ED}
