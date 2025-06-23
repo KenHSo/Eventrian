@@ -1,10 +1,35 @@
 ﻿@page "/login"
+@using Eventrian.Shared.Dtos.Auth
+@using Eventrian.Client.Features.Auth.Interfaces
+@inject IAuthService AuthService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 
-<h3>LoginPage</h3>
+<h3>Login</h3>
 
-<Login></Login>
+<Login OnLoginSubmit="HandleLogin" />
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
 
 @code {
-	private string username = string.Empty;
-	private string password = string.Empty;
+    private string? Error;
+
+    private async Task HandleLogin(LoginRequestDto dto)
+    {
+        Error = null;
+
+        var response = await AuthService.LoginAsync(dto);
+
+        if (response.Success && !string.IsNullOrEmpty(response.Token))
+        {
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            Error = response.Message;
+        }
+    }
 }
