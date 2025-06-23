@@ -8,20 +8,25 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Eventrian.Api.IntegrationTests.Setup;
 
+/// <summary>
+/// Custom WebApplicationFactory for integration tests.
+/// Loads JWT settings from environment or .env file,
+/// overrides configuration, and uses in-memory database.
+/// </summary>
 public class TestApiFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Load .env from solution root
+        // Resolve .env path from solution root (ensures reliability across test contexts)
         string root = PathHelper.FindSolutionRoot(AppContext.BaseDirectory);
-        string envPath = Path.Combine(root, ".env");
+        string envPath = Path.Combine(root, "src", "Eventrian.Api", ".env");
 
-        // Get JWT settings from environment variables or .env file
+        // Load JWT settings from environment or fallback to .env
         var secretKey = JwtTestEnvHelper.GetJwtSetting("JwtSettings__SecretKey", envPath);
         var issuer = JwtTestEnvHelper.GetJwtSetting("JwtSettings__Issuer", envPath);
         var audience = JwtTestEnvHelper.GetJwtSetting("JwtSettings__Audience", envPath);
 
-        // Inject JWT settings into configuration
+        // Inject settings into config (overrides appsettings)
         builder.ConfigureAppConfiguration((context, config) =>
         {
             var settings = new Dictionary<string, string?>
