@@ -1,9 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Eventrian.Shared.Dtos.Auth;
 using Eventrian.Api.Features.Auth.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Eventrian.Api.Features.Auth;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class AuthController : ControllerBase
@@ -15,6 +17,7 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     public async Task<IActionResult> RegisterAsync([FromBody] RegisterRequestDto registerRequest)
     {
@@ -29,6 +32,7 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync([FromBody] LoginRequestDto loginRequest)
     {
