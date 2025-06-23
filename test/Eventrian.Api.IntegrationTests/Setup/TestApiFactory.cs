@@ -24,7 +24,7 @@ public class TestApiFactory : WebApplicationFactory<Program>
         // Inject JWT settings into configuration
         builder.ConfigureAppConfiguration((context, config) =>
         {
-            var settings = new Dictionary<string, string>
+            var settings = new Dictionary<string, string?>
             {
                 ["JwtSettings:SecretKey"] = secretKey,
                 ["JwtSettings:Issuer"] = issuer,
