@@ -1,7 +1,7 @@
 ﻿using Microsoft.JSInterop;
 using Eventrian.Client.Features.Auth.Interfaces;
 
-namespace Eventrian.Client.Features.Auth;
+namespace Eventrian.Client.Features.Auth.Services;
 
 public class TokenStorageService(IJSRuntime js) : ITokenStorageService
 {
