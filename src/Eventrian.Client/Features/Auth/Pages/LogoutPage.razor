@@ -1,0 +1,14 @@
+﻿@page "/logout"
+@using Eventrian.Client.Features.Auth.Interfaces
+@inject IAuthService AuthService
+@inject NavigationManager NavManager
+
+<h3>Logging out...</h3>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.LogoutAsync();
+        NavManager.NavigateTo("/", forceLoad: true);
+    }
+}

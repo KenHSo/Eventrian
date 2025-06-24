@@ -47,6 +47,7 @@ public class AuthService : IAuthService
     public async Task LogoutAsync()
     {
         await _tokenStorage.RemoveTokenAsync();
+        _authStateProvider.NotifyUserLogout();
     }
 
     /// <summary>
