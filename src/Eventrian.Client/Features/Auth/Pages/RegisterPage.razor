@@ -1,0 +1,36 @@
+﻿@page "/register"
+@using Eventrian.Client.Features.Auth.Components
+@using Eventrian.Client.Features.Auth.Interfaces
+@using Eventrian.Shared.Dtos.Auth
+@inject IAuthService AuthService
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+<h3>Register</h3>
+
+<Register OnRegisterSubmit="HandleRegister" />
+
+@if (!string.IsNullOrEmpty(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+@code {
+    private string? Error;
+
+    private async Task HandleRegister(RegisterRequestDto dto)
+    {
+        Error = null;
+
+        var result = await AuthService.RegisterAsync(dto);
+
+        if (result.Success)
+        {
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            Error = result.Message;
+        }
+    }
+}
