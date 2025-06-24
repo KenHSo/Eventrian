@@ -3,7 +3,7 @@ using System.Security.Claims;
 using Eventrian.Client.Features.Auth.Interfaces;
 using Microsoft.AspNetCore.Components.Authorization;
 
-namespace Eventrian.Client.Features.Auth;
+namespace Eventrian.Client.Features.Auth.State;
 
 public class CustomAuthStateProvider : AuthenticationStateProvider, ICustomAuthStateProvider
 {

@@ -1,6 +1,7 @@
 using Eventrian.Client;
-using Eventrian.Client.Features.Auth;
 using Eventrian.Client.Features.Auth.Interfaces;
+using Eventrian.Client.Features.Auth.Services;
+using Eventrian.Client.Features.Auth.State;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
