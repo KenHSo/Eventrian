@@ -27,7 +27,7 @@ public class AuthService : IAuthService
         }
 
         IList<string> roles = await _userManager.GetRolesAsync(user);
-        string token = _tokenService.CreateToken(user.Id, user.Email!, roles);
+        string token = _tokenService.CreateToken(user.Id, user.Email!, user.UserName!, roles);
 
         return LoginResponseDto.SuccessResponse(user.Email!, token, "Login successful.");
     }
@@ -58,7 +58,7 @@ public class AuthService : IAuthService
         await _userManager.AddToRoleAsync(newUser, "Customer");
 
         IList<string> roles = await _userManager.GetRolesAsync(newUser);
-        string token = _tokenService.CreateToken(newUser.Id, newUser.Email!, roles);
+        string token = _tokenService.CreateToken(newUser.Id, newUser.Email!, newUser.UserName, roles);
 
         return LoginResponseDto.SuccessResponse(newUser.Email!, token, "User registered successfully.");
     }
