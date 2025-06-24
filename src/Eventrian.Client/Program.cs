@@ -16,8 +16,11 @@ builder.Services.AddScoped(sp =>
 // Auth Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenStorageService, TokenStorageService>();
+
 // Auth State (enables <AuthorizeView> & [Authorize])
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-builder.Services.AddScoped<ICustomAuthStateProvider, CustomAuthStateProvider>();
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<ICustomAuthStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
+builder.Services.AddAuthorizationCore();
 
 await builder.Build().RunAsync();
