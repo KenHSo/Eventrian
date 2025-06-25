@@ -20,7 +20,7 @@ public class AuthService : IAuthService
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
         var response = await _http.PostAsJsonAsync("api/auth/login", request);
-        return await HandleAuthResponseAsync(response, "Login");
+        return await HandleAuthResponseAsync(response, "Login", request.RememberMe);
     }
 
     public async Task LogoutAsync()
@@ -32,7 +32,7 @@ public class AuthService : IAuthService
     public async Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request)
     {
         var response = await _http.PostAsJsonAsync("api/auth/register", request);
-        return await HandleAuthResponseAsync(response, "Registration");
+        return await HandleAuthResponseAsync(response, "Registration", rememberMe: false);
     }
 
     //TODO: Move to a shared utility when needed elsewhere
@@ -61,7 +61,7 @@ public class AuthService : IAuthService
     /// A <see cref="LoginResponseDto"/> representing the result of the authentication attempt,
     /// including any error messages or the issued JWT token.
     /// </returns>
-    private async Task<LoginResponseDto> HandleAuthResponseAsync(HttpResponseMessage response, string actionName)
+    private async Task<LoginResponseDto> HandleAuthResponseAsync(HttpResponseMessage response, string actionName, bool rememberMe)
     {
         // Parse JSON response
         var result = await TryReadJsonAsync<LoginResponseDto>(response.Content);
@@ -77,7 +77,7 @@ public class AuthService : IAuthService
             return LoginResponseDto.FailureResponse(result.Message ?? $"{actionName} failed. Server error or invalid credentials.");
 
         // Store token and update authentication state
-        await _tokenStorage.SetTokenAsync(result.Token!);
+        await _tokenStorage.SetTokenAsync(result.Token!, rememberMe);
         await _authStateProvider.NotifyUserAuthentication();
 
         return result;
