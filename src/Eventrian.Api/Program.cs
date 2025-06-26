@@ -77,7 +77,6 @@ builder.Services.Configure<JwtSettings>(
 builder.Services.AddScoped<IdentitySeeder>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccessTokenService, AccessTokenService>();
-builder.Services.AddScoped<ITokenValidator, TokenValidator>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
 // Authorization
