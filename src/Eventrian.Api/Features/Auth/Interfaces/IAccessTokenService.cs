@@ -3,7 +3,7 @@
 /// <summary>
 /// Service for generating JWT access tokens.
 /// </summary>
-public interface ITokenService
+public interface IAccessTokenService
 {
     /// <summary>
     /// Creates a signed JWT access token for a user.
@@ -13,5 +13,5 @@ public interface ITokenService
     /// <param name="roles">A list of roles assigned to the user.</param>
     /// <param name="username">The user's username.</param>
     /// <returns>A JWT access token as a string.</returns>
-    string CreateToken(string userId, string email, string username, IList<string> roles);
+    string CreateAccessToken(string userId, string email, string username, IList<string> roles);
 }
