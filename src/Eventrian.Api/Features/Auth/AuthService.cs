@@ -10,18 +10,15 @@ public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAccessTokenService _tokenService;
-    private readonly ITokenValidator _tokenValidator;
     private readonly IRefreshTokenService _refreshTokenService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         IAccessTokenService tokenService,
-        ITokenValidator tokenValidator,
         IRefreshTokenService refreshTokenService)
     {
         _userManager = userManager;
         _tokenService = tokenService;
-        _tokenValidator = tokenValidator;
         _refreshTokenService = refreshTokenService;
     }
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto)
