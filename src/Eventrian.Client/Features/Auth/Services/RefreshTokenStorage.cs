@@ -3,13 +3,13 @@ using Eventrian.Client.Features.Auth.Interfaces;
 
 namespace Eventrian.Client.Features.Auth.Services;
 
-public class RefreshTokenStorageService : IRefreshTokenStorageService
+public class RefreshTokenStorage : IRefreshTokenStorage
 {
     private readonly IJSRuntime _js;
 
     private const string RefreshTokenKey = "refresh_token";
 
-    public RefreshTokenStorageService(IJSRuntime js)
+    public RefreshTokenStorage(IJSRuntime js)
     {
         _js = js;
     }

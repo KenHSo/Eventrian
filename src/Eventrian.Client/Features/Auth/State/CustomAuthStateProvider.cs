@@ -5,52 +5,44 @@ using System.Security.Claims;
 
 public class CustomAuthStateProvider : AuthenticationStateProvider, ICustomAuthStateProvider
 {
-    private readonly IAuthService _authService;
-    private ClaimsPrincipal _currentUser = new(new ClaimsIdentity());
+    private readonly IAccessTokenStorage _accessTokenProvider;
 
-    public CustomAuthStateProvider(IAuthService authService)
+    public CustomAuthStateProvider(IAccessTokenStorage accessTokenProvider)
     {
-        _authService = authService;
+        _accessTokenProvider = accessTokenProvider;
     }
 
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var accessToken = _authService.GetAccessToken();
-        if (!string.IsNullOrWhiteSpace(accessToken))
-            _currentUser = BuildClaimsPrincipal(accessToken);
+        var token = _accessTokenProvider.GetAccessToken();
+        var user = string.IsNullOrWhiteSpace(token)
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : BuildClaimsPrincipal(token);
 
-        return Task.FromResult(new AuthenticationState(_currentUser));
+        return Task.FromResult(new AuthenticationState(user));
     }
 
     public Task NotifyUserAuthentication()
     {
-        var accessToken = _authService.GetAccessToken();
-        if (!string.IsNullOrWhiteSpace(accessToken))
-            _currentUser = BuildClaimsPrincipal(accessToken);
+        var token = _accessTokenProvider.GetAccessToken();
+        var user = string.IsNullOrWhiteSpace(token)
+            ? new ClaimsPrincipal(new ClaimsIdentity())
+            : BuildClaimsPrincipal(token);
 
-        var state = new AuthenticationState(_currentUser);
-        NotifyAuthenticationStateChanged(Task.FromResult(state));
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
         return Task.CompletedTask;
     }
 
     public void NotifyUserLogout()
     {
-        _currentUser = new ClaimsPrincipal(new ClaimsIdentity());
-        var state = new AuthenticationState(_currentUser);
-        NotifyAuthenticationStateChanged(Task.FromResult(state));
+        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymous)));
     }
 
-    public bool IsTokenExpired(string accessToken)
+    private ClaimsPrincipal BuildClaimsPrincipal(string token)
     {
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(accessToken);
-        return jwt.ValidTo < DateTime.UtcNow;
-    }
-
-    private ClaimsPrincipal BuildClaimsPrincipal(string accessToken)
-    {
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(accessToken);
+        var jwt = handler.ReadJwtToken(token);
         var identity = new ClaimsIdentity(jwt.Claims, "jwt");
         return new ClaimsPrincipal(identity);
     }
