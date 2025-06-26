@@ -18,13 +18,13 @@
 @code {
     private string? Error;
 
-    private async Task HandleLogin(LoginRequestDto dto)
+    private async Task HandleLogin(LoginRequestDto request)
     {
         Error = null;
 
-        var response = await AuthService.LoginAsync(dto);
+        var response = await AuthService.LoginAsync(request);
 
-        if (response.Success && !string.IsNullOrEmpty(response.Token))
+        if (response.Success && !string.IsNullOrEmpty(response.AccessToken))
         {
             Nav.NavigateTo("/");
         }

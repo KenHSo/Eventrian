@@ -18,11 +18,11 @@
 @code {
     private string? Error;
 
-    private async Task HandleRegister(RegisterRequestDto dto)
+    private async Task HandleRegister(RegisterRequestDto request)
     {
         Error = null;
 
-        var result = await AuthService.RegisterAsync(dto);
+        var result = await AuthService.RegisterAsync(request);
 
         if (result.Success)
         {

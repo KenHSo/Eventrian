@@ -8,11 +8,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-    // DbSets
-    // public DbSet<Event> Events { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; } = default!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<RefreshToken>()
+        .HasOne(rt => rt.User)
+        .WithMany()
+        .HasForeignKey(rt => rt.UserId);
+
     }
 }

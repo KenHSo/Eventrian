@@ -46,4 +46,21 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
+
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshRequestDto request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var response = await _authService.RefreshTokenAsync(request);
+
+        if (!response.Success)
+            return Unauthorized(response.Message);
+
+        return Ok(response);
+    }
+
+
 }

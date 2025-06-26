@@ -8,16 +8,16 @@ using System.Text;
 
 namespace Eventrian.Api.Features.Auth;
 
-public class TokenService : ITokenService
+public class AccessTokenService : IAccessTokenService
 {
     private readonly JwtSettings _jwtSettings;
 
-    public TokenService(IOptions<JwtSettings> jwtOptions)
+    public AccessTokenService(IOptions<JwtSettings> jwtOptions)
     {
         _jwtSettings = jwtOptions.Value;
     }
 
-    public string CreateToken(string userId, string email, string username, IList<string> roles)
+    public string CreateAccessToken(string userId, string email, string username, IList<string> roles)
     {
         var claims = new List<Claim>
         {

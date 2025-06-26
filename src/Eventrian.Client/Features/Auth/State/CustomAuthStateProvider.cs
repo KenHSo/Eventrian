@@ -1,57 +1,56 @@
-﻿using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Eventrian.Client.Features.Auth.Interfaces;
+﻿using Eventrian.Client.Features.Auth.Interfaces;
 using Microsoft.AspNetCore.Components.Authorization;
-
-namespace Eventrian.Client.Features.Auth.State;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 public class CustomAuthStateProvider : AuthenticationStateProvider, ICustomAuthStateProvider
 {
-    private readonly ITokenStorageService _tokenStorage;
+    private readonly IAuthService _authService;
+    private ClaimsPrincipal _currentUser = new(new ClaimsIdentity());
 
-    public CustomAuthStateProvider(ITokenStorageService tokenStorage)
+    public CustomAuthStateProvider(IAuthService authService)
     {
-        _tokenStorage = tokenStorage;
+        _authService = authService;
     }
 
-    public override async Task<AuthenticationState> GetAuthenticationStateAsync()
+    public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        var token = await _tokenStorage.GetTokenAsync();
+        var accessToken = _authService.GetAccessToken();
+        if (!string.IsNullOrWhiteSpace(accessToken))
+            _currentUser = BuildClaimsPrincipal(accessToken);
 
-        if (string.IsNullOrWhiteSpace(token) || IsTokenExpired(token))
-        {
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
-        }
-
-        return new AuthenticationState(BuildClaimsPrincipal(token));
+        return Task.FromResult(new AuthenticationState(_currentUser));
     }
 
-    public async Task NotifyUserAuthentication()
+    public Task NotifyUserAuthentication()
     {
-        var token = await _tokenStorage.GetTokenAsync();
-        if (string.IsNullOrWhiteSpace(token)) return;
+        var accessToken = _authService.GetAccessToken();
+        if (!string.IsNullOrWhiteSpace(accessToken))
+            _currentUser = BuildClaimsPrincipal(accessToken);
 
-        var principal = BuildClaimsPrincipal(token);
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(principal)));
+        var state = new AuthenticationState(_currentUser);
+        NotifyAuthenticationStateChanged(Task.FromResult(state));
+        return Task.CompletedTask;
     }
 
     public void NotifyUserLogout()
     {
-        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymous)));
+        _currentUser = new ClaimsPrincipal(new ClaimsIdentity());
+        var state = new AuthenticationState(_currentUser);
+        NotifyAuthenticationStateChanged(Task.FromResult(state));
     }
 
-    public bool IsTokenExpired(string token)
+    public bool IsTokenExpired(string accessToken)
     {
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
+        var jwt = handler.ReadJwtToken(accessToken);
         return jwt.ValidTo < DateTime.UtcNow;
     }
 
-    private ClaimsPrincipal BuildClaimsPrincipal(string token)
+    private ClaimsPrincipal BuildClaimsPrincipal(string accessToken)
     {
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
+        var jwt = handler.ReadJwtToken(accessToken);
         var identity = new ClaimsIdentity(jwt.Claims, "jwt");
         return new ClaimsPrincipal(identity);
     }
