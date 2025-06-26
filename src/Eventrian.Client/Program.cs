@@ -14,7 +14,9 @@ builder.Services.AddScoped(sp =>
 
 // Auth Services
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IRefreshTokenStorageService, RefreshTokenStorageService>();
+builder.Services.AddScoped<IRefreshTokenStorage, RefreshTokenStorage>();
+builder.Services.AddScoped<IAccessTokenStorage, AccessTokenStorage>();
+builder.Services.AddScoped<ITokenRefresher, TokenRefresher>();
 
 // Auth State (enables <AuthorizeView> & [Authorize])
 builder.Services.AddScoped<CustomAuthStateProvider>();
@@ -26,7 +28,7 @@ builder.Services.AddAuthorizationCore();
 
 var host = builder.Build();
 
-var authService = host.Services.GetRequiredService<IAuthService>();
-await authService.InitializeAsync();
+var refresher = host.Services.GetRequiredService<ITokenRefresher>();
+await refresher.InitializeAsync();
 
 await host.RunAsync();

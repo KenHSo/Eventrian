@@ -6,24 +6,16 @@ using System.Net.Http.Json;
 public class AuthService : IAuthService
 {
     private readonly HttpClient _http;
-    private readonly IRefreshTokenStorageService _refreshTokenStorage;
+    private readonly IRefreshTokenStorage _refreshTokenStorage;
+    private readonly IAccessTokenStorage _accessTokenProvider;
+    private readonly ITokenRefresher _tokenRefresher;
 
-    private string? _accessToken;
-
-    public AuthService(HttpClient http, IRefreshTokenStorageService refreshTokenStorage)
+    public AuthService(HttpClient http, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenProvider, ITokenRefresher tokenRefresher)
     {
         _http = http;
         _refreshTokenStorage = refreshTokenStorage;
-    }
-
-    public async Task InitializeAsync()
-    {
-        var success = await TryRefreshTokenAsync();
-        if (!success)
-        {
-            _accessToken = null;
-            _http.DefaultRequestHeaders.Authorization = null;
-        }
+        _accessTokenProvider = accessTokenProvider;
+        _tokenRefresher = tokenRefresher;
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
@@ -34,13 +26,16 @@ public class AuthService : IAuthService
         if (!IsValidLoginResponse(response, result))
         {
             return LoginResponseDto.FailureResponse(
-                result?.Message ?? 
+                result?.Message ??
                 $"Login failed with status {response.StatusCode}."
             );
         }
 
-        SetAccessToken(result!.AccessToken!);
+        ApplyAccessToken(result!.AccessToken!);
         await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, request.RememberMe);
+
+        _tokenRefresher.Start();
+
         return result;
     }
 
@@ -52,66 +47,49 @@ public class AuthService : IAuthService
         if (!IsValidLoginResponse(response, result))
         {
             return LoginResponseDto.FailureResponse(
-                result?.Message ?? 
+                result?.Message ??
                 $"Registration failed with status {response.StatusCode}."
             );
         }
 
-        SetAccessToken(result!.AccessToken!);
+        ApplyAccessToken(result!.AccessToken!);
         await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, false);
+
+        _tokenRefresher.Start();
+
         return result;
     }
 
     public async Task LogoutAsync()
     {
-        _accessToken = null;
+        _accessTokenProvider.ClearAccessToken();
         _http.DefaultRequestHeaders.Authorization = null;
 
-        // TODO: In the future, consider supporting "soft logout" to only clear sessionStorage
-        //       This would allow switching between demo users while keeping persistent refresh tokens
+        _tokenRefresher.Stop();
 
         await _refreshTokenStorage.RemoveRefreshTokenAsync();
     }
 
-    public async Task<bool> TryRefreshTokenAsync()
-    {
-        var refreshToken = await _refreshTokenStorage.GetRefreshTokenAsync();
-        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
-
-        Console.WriteLine($"[AuthService] RefreshToken: {refreshToken}");
-        Console.WriteLine($"[AuthService] AccessToken: {_accessToken}");
-
-        var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshRequestDto
-        {
-            RefreshToken = refreshToken
-        });
-
-        var result = await ParseJsonAsync<RefreshResponseDto>(response.Content);
-        if (!IsValidRefreshResponse(response, result)) return false;
-
-        SetAccessToken(result!.AccessToken!);
-        await _refreshTokenStorage.SetRefreshTokenAsync(
-            result.RefreshToken!,
-            await _refreshTokenStorage.HasLocalStorageTokenAsync()
-        );
-
-        return true;
-    }
-
-    public string? GetAccessToken() => _accessToken;
 
     // --- Helpers ---
 
-    private void SetAccessToken(string accessToken)
+    /// <summary> Sets the access token in memory and attaches it to the Authorization header of outgoing HTTP requests</summary>
+
+    private void ApplyAccessToken(string accessToken)
     {
-        _accessToken = accessToken;
+        _accessTokenProvider.SetAccessToken(accessToken);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     }
 
+    // TODO: Move this to a shared utility class + add error handling
     private static async Task<T?> ParseJsonAsync<T>(HttpContent content)
     {
         try { return await content.ReadFromJsonAsync<T>(); }
-        catch { return default; }
+        catch
+        {
+            Console.WriteLine($"[AuthService] Failed to parse JSON for type {typeof(T).Name}.");
+            return default;
+        }
     }
 
     private static bool IsValidLoginResponse(HttpResponseMessage response, LoginResponseDto? result)
@@ -122,13 +100,5 @@ public class AuthService : IAuthService
                !string.IsNullOrEmpty(result.AccessToken) &&
                !string.IsNullOrEmpty(result.RefreshToken);
     }
-
-    private static bool IsValidRefreshResponse(HttpResponseMessage response, RefreshResponseDto? result)
-    {
-        return result is not null &&
-               response.IsSuccessStatusCode &&
-               result.Success &&
-               !string.IsNullOrEmpty(result.AccessToken) &&
-               !string.IsNullOrEmpty(result.RefreshToken);
-    }
+   
 }

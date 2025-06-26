@@ -1,6 +1,6 @@
 ﻿namespace Eventrian.Client.Features.Auth.Interfaces;
 
-public interface IRefreshTokenStorageService
+public interface IRefreshTokenStorage
 {
     /// <summary>
     /// Stores the refresh token in either localStorage or sessionStorage,

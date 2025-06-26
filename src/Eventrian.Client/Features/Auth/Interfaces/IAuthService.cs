@@ -7,8 +7,6 @@ namespace Eventrian.Client.Features.Auth.Interfaces;
 /// </summary>
 public interface IAuthService
 {
-    Task InitializeAsync();
-
     /// <summary>
     /// Sends a login request and stores the access and refresh tokens if successful.
     /// </summary>
@@ -31,16 +29,4 @@ public interface IAuthService
     /// Clears stored access and refresh tokens and notifies the app of logout.
     /// </summary>
     Task LogoutAsync();
-
-    /// <summary>
-    /// Retrieves the currently stored access token, if any.
-    /// </summary>
-    /// <returns>The access token string or null if not authenticated.</returns>
-    string? GetAccessToken();
-
-    /// <summary>
-    /// Attempts to refresh the access token using a stored refresh token.
-    /// </summary>
-    /// <returns>True if the token was refreshed successfully; otherwise, false.</returns>
-    Task<bool> TryRefreshTokenAsync();
 }
