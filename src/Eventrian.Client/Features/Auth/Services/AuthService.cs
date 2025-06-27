@@ -64,13 +64,11 @@ public class AuthService : IAuthService
 
         var result = await JsonHelper.TryReadJsonAsync<LoginResponseDto>(response.Content, caller);
 
-        if (result is null || !result.Success ||
-            string.IsNullOrEmpty(result.AccessToken) ||
-            string.IsNullOrEmpty(result.RefreshToken))
-            return LoginResponseDto.FailureResponse(result?.Message ?? "Invalid response format.");
+        if (!TokenHelper.IsValidTokenResponse(result))
+            return LoginResponseDto.FailureResponse(result?.Message ?? $"[{caller}] Invalid response format or missing tokens.");
 
-        _accessTokenStorage.SetAccessToken(result.AccessToken);
-        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken, rememberMe);
+        _accessTokenStorage.SetAccessToken(result!.AccessToken!);
+        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, rememberMe);
         _tokenRefresher.Start();
 
         return result;
