@@ -11,11 +11,11 @@ public class AuthService : IAuthService
     private readonly ITokenRefresher _tokenRefresher;
     private readonly ICustomAuthStateProvider _authStateProvider;
 
-    public AuthService(IHttpClientFactory factory, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenProvider, ITokenRefresher tokenRefresher, ICustomAuthStateProvider authStateProvider)
+    public AuthService(IHttpClientFactory factory, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenStorage, ITokenRefresher tokenRefresher, ICustomAuthStateProvider authStateProvider)
     {
         _http = factory.CreateClient("UnprotectedApi");
         _refreshTokenStorage = refreshTokenStorage;
-        _accessTokenStorage = accessTokenProvider;
+        _accessTokenStorage = accessTokenStorage;
         _tokenRefresher = tokenRefresher;
         _authStateProvider = authStateProvider;
     }
