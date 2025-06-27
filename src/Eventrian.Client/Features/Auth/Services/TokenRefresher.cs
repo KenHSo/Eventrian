@@ -27,6 +27,8 @@ public class TokenRefresher : ITokenRefresher
 
     public async Task InitializeAsync()
     {
+        _accessTokenStorage.AllowTokenUpdates(); // Allow setting new access token on app start
+
         var success = await TryRefreshTokenAsync();
         if (!success)
         {

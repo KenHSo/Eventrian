@@ -1,7 +1,7 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
 using Eventrian.Shared.Dtos.Auth;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Runtime.CompilerServices;
 
 public class AuthService : IAuthService
 {
@@ -22,53 +22,24 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
-        _accessTokenStorage.AllowTokenUpdates(); // Allow updates to the access token during login 
+        _accessTokenStorage.AllowTokenUpdates(); // Allow setting new access token; must be called before handling response
 
         var response = await _http.PostAsJsonAsync("api/auth/login", request);
-        var result = await ParseJsonAsync<LoginResponseDto>(response.Content);
-
-        if (!IsValidLoginResponse(response, result))
-        {
-            return LoginResponseDto.FailureResponse(
-                result?.Message ??
-                $"Login failed with status {response.StatusCode}."
-            );
-        }
-
-        ApplyAccessToken(result!.AccessToken!);
-        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, request.RememberMe);
-
-        _tokenRefresher.Start();
-
-        return result;
+        return await HandleAuthResponseAsync(response, request.RememberMe);
     }
 
     public async Task<LoginResponseDto> RegisterAsync(RegisterRequestDto request)
     {
-        var response = await _http.PostAsJsonAsync("api/auth/register", request);
-        var result = await ParseJsonAsync<LoginResponseDto>(response.Content);
+        _accessTokenStorage.AllowTokenUpdates();
 
-        if (!IsValidLoginResponse(response, result))
-        {
-            return LoginResponseDto.FailureResponse(
-                result?.Message ??
-                $"Registration failed with status {response.StatusCode}."
-            );
-        }
-
-        ApplyAccessToken(result!.AccessToken!);
-        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, false);
-
-        _tokenRefresher.Start();
-
-        return result;
+        var response = await _http.PostAsJsonAsync("api/auth/register", request);     
+        return await HandleAuthResponseAsync(response);
     }
 
     public async Task LogoutAsync()
     {
         _accessTokenStorage.BlockTokenUpdates(); // Prevent further updates to the access token while logging out
         _accessTokenStorage.ClearAccessToken();
-        _http.DefaultRequestHeaders.Authorization = null;
 
         _tokenRefresher.Stop();
 
@@ -76,35 +47,32 @@ public class AuthService : IAuthService
         await _authStateProvider.NotifyUserLogout();
     }
 
-
     // --- Helpers ---
 
-    /// <summary> Sets the access token in memory and attaches it to the Authorization header of outgoing HTTP requests</summary>
+    /// <summary>
+    /// Handles common response logic for auth endpoints.
+    /// Checks HTTP status, parses JSON, and validates structure.
+    /// </summary>
+    /// <param name="response">The HTTP response to process.</param>
+    /// <param name="caller">Optional caller name for logging.</param>
+    /// <returns>The parsed and validated response DTO, or a failure response.</returns>
 
-    private void ApplyAccessToken(string accessToken)
+    private async Task<LoginResponseDto> HandleAuthResponseAsync(HttpResponseMessage response, bool rememberMe = false, [CallerMemberName] string? caller = null)
     {
-        _accessTokenStorage.SetAccessToken(accessToken);
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-    }
+        if (!response.IsSuccessStatusCode)
+            return LoginResponseDto.FailureResponse($"[{caller}] HTTP request failed with status code {response.StatusCode}.");
 
-    // TODO: Move this to a shared utility class + add error handling
-    private static async Task<T?> ParseJsonAsync<T>(HttpContent content)
-    {
-        try { return await content.ReadFromJsonAsync<T>(); }
-        catch
-        {
-            Console.WriteLine($"[AuthService] Failed to parse JSON for type {typeof(T).Name}.");
-            return default;
-        }
-    }
+        var result = await JsonHelper.TryReadJsonAsync<LoginResponseDto>(response.Content, caller);
 
-    private static bool IsValidLoginResponse(HttpResponseMessage response, LoginResponseDto? result)
-    {
-        return result is not null &&
-               response.IsSuccessStatusCode &&
-               result.Success &&
-               !string.IsNullOrEmpty(result.AccessToken) &&
-               !string.IsNullOrEmpty(result.RefreshToken);
+        if (result is null || !result.Success ||
+            string.IsNullOrEmpty(result.AccessToken) ||
+            string.IsNullOrEmpty(result.RefreshToken))
+            return LoginResponseDto.FailureResponse(result?.Message ?? "Invalid response format.");
+
+        _accessTokenStorage.SetAccessToken(result.AccessToken);
+        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken, rememberMe);
+        _tokenRefresher.Start();
+
+        return result;
     }
-   
 }
