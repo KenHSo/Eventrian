@@ -1,5 +1,9 @@
 ﻿namespace Eventrian.Client.Features.Auth.Interfaces;
 
+/// <summary>
+/// Provides an abstraction for storing and retrieving refresh tokens using browser storage.
+/// Handles logic for session vs. persistent storage based on user preferences.
+/// </summary>
 public interface IRefreshTokenStorage
 {
     /// <summary>
