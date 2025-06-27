@@ -1,6 +1,5 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
 using Eventrian.Shared.Dtos.Auth;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
@@ -15,18 +14,17 @@ public class TokenRefresher : ITokenRefresher
     private Timer? _refreshTimer;
     private const int RefreshIntervalMinutes = 2;
 
-    public TokenRefresher(
-        HttpClient http,
-        IAccessTokenStorage accessTokenStorage,
-        IRefreshTokenStorage refreshTokenStorage)
+    public TokenRefresher(IHttpClientFactory factory, IAccessTokenStorage accessTokenStorage, IRefreshTokenStorage refreshTokenStorage)
     {
-        _http = http;
+        _http = factory.CreateClient("UnprotectedApi");
         _accessTokenStorage = accessTokenStorage;
         _refreshTokenStorage = refreshTokenStorage;
     }
 
     public async Task InitializeAsync()
     {
+        _accessTokenStorage.AllowTokenUpdates(); // Allow setting new access token on app start
+
         var success = await TryRefreshTokenAsync();
         if (!success)
         {
@@ -39,13 +37,33 @@ public class TokenRefresher : ITokenRefresher
 
     public void Start()
     {
-        Stop();
+        Stop(); // prevent multiple timers
         _refreshTimer = new Timer(
-            async _ => await CheckAndRefreshTokenAsync(),
-            null,
+            OnRefreshTimerTick, null,
             TimeSpan.FromMinutes(RefreshIntervalMinutes),
             TimeSpan.FromMinutes(RefreshIntervalMinutes));
     }
+
+    #region Private Timer Helpers
+
+    /// <summary>
+    /// Timer callback required by <see cref="System.Threading.Timer"/>.
+    /// Discards the task returned by <see cref="RunCheckAndRefreshTokenAsync"/> to avoid unobserved exceptions.
+    /// </summary>
+    /// <param name="_">Unused state parameter required by the timer delegate.</param>
+    private void OnRefreshTimerTick(object? _) => _ = RunCheckAndRefreshTokenAsync();
+
+    /// <summary>
+    /// Performs token refresh logic inside a try-catch block to prevent timer thread crashes.
+    /// This method is executed as a fire-and-forget task triggered by <see cref="OnRefreshTimerTick"/>.
+    /// </summary>
+    private async Task RunCheckAndRefreshTokenAsync()
+    {
+        try { await CheckAndRefreshTokenAsync(); }
+        catch (Exception ex) { Console.WriteLine($"[TokenRefresher] Timer exception: {ex.Message}"); }
+    }
+
+    #endregion
 
     public void Stop()
     {
@@ -53,34 +71,24 @@ public class TokenRefresher : ITokenRefresher
         _refreshTimer = null;
     }
 
-    public async Task CheckAndRefreshTokenAsync()
-    {
-        var accessToken = _accessTokenStorage.GetAccessToken();
-        if (string.IsNullOrWhiteSpace(accessToken))
-            return;
-
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(accessToken);
-        var expiresIn = jwt.ValidTo - DateTime.UtcNow;
-
-        if (expiresIn < TimeSpan.FromMinutes(5))
-        {
-            await TryRefreshTokenAsync();
-        }
-    }
-
     public async Task<bool> TryRefreshTokenAsync()
     {
         var refreshToken = await _refreshTokenStorage.GetRefreshTokenAsync();
         if (string.IsNullOrWhiteSpace(refreshToken)) return false;
 
-        var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshRequestDto
+        var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshRequestDto { RefreshToken = refreshToken });
+        if (!response.IsSuccessStatusCode)
         {
-            RefreshToken = refreshToken
-        });
+            Console.WriteLine($"[TokenRefresher] Refresh request failed with status: {response.StatusCode}");
+            return false;
+        }
 
-        var result = await ParseJsonAsync<RefreshResponseDto>(response.Content);
-        if (!IsValidResponse(response, result)) return false;
+        var result = await JsonHelper.TryReadJsonAsync<RefreshResponseDto>(response.Content);
+        if (!TokenHelper.IsValidTokenResponse(result))
+        {
+            Console.WriteLine("[TokenRefresher] Invalid refresh response.");
+            return false;
+        }
 
         _accessTokenStorage.SetAccessToken(result!.AccessToken!);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken!);
@@ -92,20 +100,24 @@ public class TokenRefresher : ITokenRefresher
         return true;
     }
 
-    // --- Helpers ---
-
-    private static bool IsValidResponse(HttpResponseMessage response, RefreshResponseDto? result)
+    public async Task CheckAndRefreshTokenAsync()
     {
-        return result is not null &&
-               response.IsSuccessStatusCode &&
-               result.Success &&
-               !string.IsNullOrWhiteSpace(result.AccessToken) &&
-               !string.IsNullOrWhiteSpace(result.RefreshToken);
-    }
+        var accessToken = _accessTokenStorage.GetAccessToken();
+        if (string.IsNullOrWhiteSpace(accessToken))
+            return;
 
-    private static async Task<T?> ParseJsonAsync<T>(HttpContent content)
-    {
-        try { return await content.ReadFromJsonAsync<T>(); }
-        catch { return default; }
+        var jwt = TokenHelper.TryParseJwt(accessToken);
+        if (jwt == null)
+        {
+            Console.WriteLine("[TokenRefresher] Access token is invalid.");
+            await TryRefreshTokenAsync(); // Attempt to refresh token if parsing failed
+            return;
+        }
+
+        if (TokenHelper.IsExpired(accessToken, TimeSpan.FromMinutes(5)))
+        {
+            Console.WriteLine($"[TokenRefresher] Token expiring soon at: {jwt?.ValidTo:O}");
+            await TryRefreshTokenAsync();
+        }
     }
 }

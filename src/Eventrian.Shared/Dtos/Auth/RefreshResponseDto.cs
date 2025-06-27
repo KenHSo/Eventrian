@@ -1,6 +1,8 @@
-﻿namespace Eventrian.Shared.Dtos.Auth;
+﻿using Eventrian.Shared.Dtos.Auth.Interfaces;
 
-public class RefreshResponseDto
+namespace Eventrian.Shared.Dtos.Auth;
+
+public class RefreshResponseDto : IAuthResponse
 {
     public bool Success { get; set; }
     public string? AccessToken { get; set; }

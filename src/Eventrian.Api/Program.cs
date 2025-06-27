@@ -66,6 +66,19 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"] 
             ?? throw new InvalidOperationException("JWT SecretKey is not configured.")))
     };
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"[JWT] Auth failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("[JWT] Token validated.");
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // Configuration binding

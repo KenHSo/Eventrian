@@ -15,7 +15,7 @@ public interface ICustomAuthStateProvider
     /// Notifies the application that the user has logged out.
     /// Clears the current authentication state.
     /// </summary>
-    void NotifyUserLogout();
+    Task NotifyUserLogout();
 
 }
 

@@ -19,4 +19,19 @@ public interface IAccessTokenStorage
     /// Clears the stored access token from memory.
     /// </summary>
     void ClearAccessToken();
+
+    /// <summary>
+    /// Prevents updates to the access token (e.g., during logout).
+    /// </summary>
+    void BlockTokenUpdates();
+
+    /// <summary>
+    /// Allows updates to the access token (e.g., during login or app start).
+    /// </summary>
+    void AllowTokenUpdates();
+
+    /// <summary>
+    /// Indicates whether token updates are currently blocked.
+    /// </summary>
+    bool TokenUpdatesBlocked { get; }
 }

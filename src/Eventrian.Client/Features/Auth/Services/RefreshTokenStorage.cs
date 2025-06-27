@@ -42,7 +42,7 @@ public class RefreshTokenStorage : IRefreshTokenStorage
         }
         catch (JSException jsEx)
         {
-            Console.WriteLine($"JS interop failed: {jsEx.Message}");
+            Console.WriteLine($"[RefreshTokenStorage] JS interop failed: {jsEx.Message}");
             return null;
         }
     }
