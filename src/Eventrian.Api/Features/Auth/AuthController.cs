@@ -62,5 +62,11 @@ public class AuthController : ControllerBase
         return Ok(response);
     }
 
+    //TODO: This endpoint is for testing purposes only. REMOVE before production.
+    [HttpGet("protected")]
+    public IActionResult ProtectedEndpoint()
+    {
+        return Ok("You have accessed a protected endpoint.");
+    }
 
 }

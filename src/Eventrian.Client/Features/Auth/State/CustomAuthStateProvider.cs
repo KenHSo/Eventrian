@@ -15,9 +15,30 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, ICustomAuthS
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         var token = _accessTokenProvider.GetAccessToken();
-        var user = string.IsNullOrWhiteSpace(token)
-            ? new ClaimsPrincipal(new ClaimsIdentity())
-            : BuildClaimsPrincipal(token);
+
+        ClaimsPrincipal user;
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            user = new ClaimsPrincipal(new ClaimsIdentity());
+        }
+        else
+        {
+            try
+            {
+                user = BuildClaimsPrincipal(token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[AuthState] Token parse failed: {ex.Message}");
+                user = new ClaimsPrincipal(new ClaimsIdentity());
+            }
+        }
+
+
+        //var user = string.IsNullOrWhiteSpace(token)
+        //    ? new ClaimsPrincipal(new ClaimsIdentity())
+        //    : BuildClaimsPrincipal(token);
 
         return Task.FromResult(new AuthenticationState(user));
     }
@@ -33,11 +54,13 @@ public class CustomAuthStateProvider : AuthenticationStateProvider, ICustomAuthS
         return Task.CompletedTask;
     }
 
-    public void NotifyUserLogout()
+    public Task NotifyUserLogout()
     {
-        var anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(anonymous)));
+        var _currentUser = new ClaimsPrincipal(new ClaimsIdentity());
+        NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_currentUser)));
+        return Task.CompletedTask;
     }
+
 
     private ClaimsPrincipal BuildClaimsPrincipal(string token)
     {

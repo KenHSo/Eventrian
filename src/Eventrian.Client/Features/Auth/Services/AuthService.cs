@@ -7,19 +7,23 @@ public class AuthService : IAuthService
 {
     private readonly HttpClient _http;
     private readonly IRefreshTokenStorage _refreshTokenStorage;
-    private readonly IAccessTokenStorage _accessTokenProvider;
+    private readonly IAccessTokenStorage _accessTokenStorage;
     private readonly ITokenRefresher _tokenRefresher;
+    private readonly ICustomAuthStateProvider _authStateProvider;
 
-    public AuthService(HttpClient http, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenProvider, ITokenRefresher tokenRefresher)
+    public AuthService(IHttpClientFactory factory, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenProvider, ITokenRefresher tokenRefresher, ICustomAuthStateProvider authStateProvider)
     {
-        _http = http;
+        _http = factory.CreateClient("NoAuth");
         _refreshTokenStorage = refreshTokenStorage;
-        _accessTokenProvider = accessTokenProvider;
+        _accessTokenStorage = accessTokenProvider;
         _tokenRefresher = tokenRefresher;
+        _authStateProvider = authStateProvider;
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
+        _accessTokenStorage.AllowTokenUpdates(); // Allow updates to the access token during login 
+
         var response = await _http.PostAsJsonAsync("api/auth/login", request);
         var result = await ParseJsonAsync<LoginResponseDto>(response.Content);
 
@@ -62,12 +66,14 @@ public class AuthService : IAuthService
 
     public async Task LogoutAsync()
     {
-        _accessTokenProvider.ClearAccessToken();
+        _accessTokenStorage.BlockTokenUpdates(); // Prevent further updates to the access token while logging out
+        _accessTokenStorage.ClearAccessToken();
         _http.DefaultRequestHeaders.Authorization = null;
 
         _tokenRefresher.Stop();
 
         await _refreshTokenStorage.RemoveRefreshTokenAsync();
+        await _authStateProvider.NotifyUserLogout();
     }
 
 
@@ -77,7 +83,7 @@ public class AuthService : IAuthService
 
     private void ApplyAccessToken(string accessToken)
     {
-        _accessTokenProvider.SetAccessToken(accessToken);
+        _accessTokenStorage.SetAccessToken(accessToken);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
     }
 

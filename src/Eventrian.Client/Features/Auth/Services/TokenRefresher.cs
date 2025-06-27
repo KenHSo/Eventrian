@@ -16,11 +16,11 @@ public class TokenRefresher : ITokenRefresher
     private const int RefreshIntervalMinutes = 2;
 
     public TokenRefresher(
-        HttpClient http,
+        IHttpClientFactory factory,
         IAccessTokenStorage accessTokenStorage,
         IRefreshTokenStorage refreshTokenStorage)
     {
-        _http = http;
+        _http = factory.CreateClient("NoAuth");
         _accessTokenStorage = accessTokenStorage;
         _refreshTokenStorage = refreshTokenStorage;
     }
@@ -60,9 +60,19 @@ public class TokenRefresher : ITokenRefresher
             return;
 
         var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(accessToken);
-        var expiresIn = jwt.ValidTo - DateTime.UtcNow;
+        JwtSecurityToken? jwt;
+        try
+        {
+            jwt = handler.ReadJwtToken(accessToken);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Access token is invalid: {ex.Message}");
+            await TryRefreshTokenAsync(); // attempt recovery
+            return;
+        }
 
+        var expiresIn = jwt.ValidTo - DateTime.UtcNow;
         if (expiresIn < TimeSpan.FromMinutes(5))
         {
             await TryRefreshTokenAsync();

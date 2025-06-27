@@ -1,0 +1,122 @@
+﻿@page "/authtest"
+@using Eventrian.Client.Features.Auth.Interfaces
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IAuthService AuthService
+@inject ITokenRefresher TokenRefresher
+@inject IAccessTokenStorage AccessTokenStorage
+@inject IRefreshTokenStorage RefreshTokenStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h1>🔒 Auth Test Page</h1>
+
+<p><b>Access Token:</b> @accessToken</p>
+<p><b>Refresh Token:</b> @refreshToken</p>
+<p><b>Authenticated:</b> @isAuthenticated</p>
+
+@if (claims.Any())
+{
+    <h3>Claims</h3>
+    <ul>
+        @foreach (var claim in claims)
+        {
+            <li>@claim.Type: @claim.Value</li>
+        }
+    </ul>
+}
+
+<hr />
+
+<h2>Actions</h2>
+
+<button @onclick="LoginTest">Login (Dummy)</button>
+<button @onclick="CallProtectedApi">Call Protected API</button>
+<button @onclick="ManualRefresh">Manually Refresh Token</button>
+<button @onclick="Logout">Logout</button>
+<button @onclick="ClearStorage">Clear Local + Session Storage</button>
+
+<hr />
+
+<h3>Logs</h3>
+<ul>
+    @foreach (var log in logs.Reverse<string>())
+    {
+        <li>@log</li>
+    }
+</ul>
+
+@code {
+    string? accessToken;
+    string? refreshToken;
+    bool isAuthenticated;
+    List<Claim> claims = new();
+    List<string> logs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadState();
+    }
+
+    private async Task LoadState()
+    {
+        accessToken = AccessTokenStorage.GetAccessToken();
+        refreshToken = await RefreshTokenStorage.GetRefreshTokenAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isAuthenticated = user.Identity?.IsAuthenticated ?? false;
+        claims = user.Claims.ToList();
+
+        StateHasChanged();
+    }
+
+    private async Task LoginTest()
+    {
+        var result = await AuthService.LoginAsync(new()
+        {
+            Email = "1@1",
+            Password = "1",
+            RememberMe = true
+        });
+
+        logs.Add($"Login success: {result.Success}");
+        await LoadState();
+    }
+
+    private async Task ManualRefresh()
+    {
+        var success = await TokenRefresher.TryRefreshTokenAsync();
+        logs.Add(success ? "Manual refresh successful." : "Manual refresh failed.");
+        await LoadState();
+    }
+
+    private async Task CallProtectedApi()
+    {
+        try
+        {
+            var result = await Http.GetStringAsync("api/auth/protected");
+            logs.Add($"Protected API result: {result}");
+        }
+        catch (Exception ex)
+        {
+            logs.Add($"API call failed: {ex.Message}");
+        }
+    }
+
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        logs.Add("Logged out.");
+        await LoadState();
+    }
+
+    private async Task ClearStorage()
+    {
+        await RefreshTokenStorage.RemoveRefreshTokenAsync();
+        AccessTokenStorage.ClearAccessToken();
+        logs.Add("Cleared token storage.");
+        await LoadState();
+    }
+}

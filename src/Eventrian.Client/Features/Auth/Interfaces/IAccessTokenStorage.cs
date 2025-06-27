@@ -19,4 +19,8 @@ public interface IAccessTokenStorage
     /// Clears the stored access token from memory.
     /// </summary>
     void ClearAccessToken();
+
+    void BlockTokenUpdates();
+    void AllowTokenUpdates(); 
+    bool CanUpdateToken { get; }
 }
