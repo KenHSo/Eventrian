@@ -22,5 +22,5 @@ public interface IAccessTokenStorage
 
     void BlockTokenUpdates();
     void AllowTokenUpdates(); 
-    bool CanUpdateToken { get; }
+    bool TokenUpdateBlocked { get; }
 }

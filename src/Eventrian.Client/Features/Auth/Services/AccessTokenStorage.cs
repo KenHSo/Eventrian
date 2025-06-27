@@ -7,7 +7,8 @@ public class AccessTokenStorage : IAccessTokenStorage
 {
     private string? _accessToken;
     private readonly Guid _instanceId = Guid.NewGuid();
-    public bool CanUpdateToken { get; private set; } = true;
+    // Prevent restoring stale tokens if session ends before access token is set
+    public bool TokenUpdateBlocked { get; private set; } = true;
 
     public AccessTokenStorage()
     {
@@ -16,10 +17,10 @@ public class AccessTokenStorage : IAccessTokenStorage
 
     public void BlockTokenUpdates()
     {
-        CanUpdateToken = false;
+        TokenUpdateBlocked = true;
         _accessToken = null;
     }
-    public void AllowTokenUpdates() => CanUpdateToken = true;
+    public void AllowTokenUpdates() => TokenUpdateBlocked = false;
 
     public string? GetAccessToken()
     {
@@ -30,7 +31,7 @@ public class AccessTokenStorage : IAccessTokenStorage
     public void SetAccessToken(string token)
     {
         // Prevent async refresh or race conditions from restoring token after logout
-        if (!CanUpdateToken)
+        if (TokenUpdateBlocked)
         {
             Console.WriteLine("[AccessTokenStorage] Ignoring SetAccessToken after session terminated.");
             return;

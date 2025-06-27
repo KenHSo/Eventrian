@@ -13,7 +13,7 @@ public class AuthService : IAuthService
 
     public AuthService(IHttpClientFactory factory, IRefreshTokenStorage refreshTokenStorage, IAccessTokenStorage accessTokenProvider, ITokenRefresher tokenRefresher, ICustomAuthStateProvider authStateProvider)
     {
-        _http = factory.CreateClient("NoAuth");
+        _http = factory.CreateClient("UnprotectedApi");
         _refreshTokenStorage = refreshTokenStorage;
         _accessTokenStorage = accessTokenProvider;
         _tokenRefresher = tokenRefresher;

@@ -39,7 +39,7 @@ public class TokenRefreshHandler : DelegatingHandler
         }
 
         // Guard 1: avoid accidental login after logout
-        if (_accessTokenStorage.CanUpdateToken)
+        if (_accessTokenStorage.TokenUpdateBlocked)
         {
             Console.WriteLine("[TokenRefreshHandler] Token updates are blocked. Skipping request.");
             return new HttpResponseMessage(HttpStatusCode.Unauthorized);

@@ -20,7 +20,7 @@ public class TokenRefresher : ITokenRefresher
         IAccessTokenStorage accessTokenStorage,
         IRefreshTokenStorage refreshTokenStorage)
     {
-        _http = factory.CreateClient("NoAuth");
+        _http = factory.CreateClient("UnprotectedApi");
         _accessTokenStorage = accessTokenStorage;
         _refreshTokenStorage = refreshTokenStorage;
     }
