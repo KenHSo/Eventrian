@@ -99,7 +99,7 @@ public class TokenRefresher : ITokenRefresher
             result.RefreshToken!,
             await _refreshTokenStorage.HasLocalStorageTokenAsync());
 
-        // NEW: Re-register logout listener in JS so other tabs can detect logout for same user
+        // Re-register logout listener in JS so other tabs can detect logout for same user
         var userId = TokenHelper.GetUserIdFromAccessToken(result.AccessToken!);
         await _authBroadcastService.InitLogoutBroadcastAsync(userId);
 

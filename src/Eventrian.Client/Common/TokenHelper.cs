@@ -67,6 +67,6 @@ public static class TokenHelper
     {
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(token);
-        return jwt.Subject ?? "";
+        return jwt.Subject ?? ""; // Safe fallback: token creation always include 'sub'; fallback avoids null propagation if tampered
     }
 }

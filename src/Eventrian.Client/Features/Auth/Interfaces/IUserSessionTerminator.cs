@@ -7,8 +7,13 @@
 public interface IUserSessionTerminator
 {
     /// <summary>
-    /// Terminates the current user session by clearing authentication state and navigating to the login page.
-    /// Typically called when authentication is no longer valid (e.g., failed token refresh).
+    /// Forcefully terminates the current user session by calling <c>LogoutAsync</c> and navigating to the login page.
+    /// Used when authentication is no longer valid (e.g., token expired or refresh failed).
+    /// This performs full cleanup: tokens, timers, state, and broadcast handling.
     /// </summary>
+    /// <param name="fromBroadcast">
+    /// If true, the logout was triggered by another tab via broadcast and should not rebroadcast again.
+    /// Prevents infinite logout loops across tabs.
+    /// </param>
     Task TerminateUserSessionAsync(bool fromBroadcast = false);
 }

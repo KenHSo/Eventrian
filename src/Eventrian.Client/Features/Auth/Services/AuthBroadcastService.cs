@@ -46,8 +46,7 @@ public class AuthBroadcastService : IAuthBroadcastService, IAsyncDisposable
     [JSInvokable]
     public void OnBroadcastLogoutMatch()
     {
-        // JS received a logout event matching the current user's ID
-        // Trigger the .NET event so logout can happen
+        // JS received a logout event for this user - trigger .NET logout
         Console.WriteLine("[Broadcast] Received logout match — terminating session");
         OnLogoutBroadcasted?.Invoke();
     }
@@ -55,9 +54,16 @@ public class AuthBroadcastService : IAuthBroadcastService, IAsyncDisposable
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize", Justification = "No finalizer is defined.")]
     public async ValueTask DisposeAsync()
     {
-        _dotNetRef?.Dispose();
-        if (_module is not null)
-            await _module.DisposeAsync();
+        if (_dotNetRef is not null)
+        {
+            _dotNetRef.Dispose();
+            _dotNetRef = null; // Optional, prevents double-dispose
+        }
 
+        if (_module is not null)
+        {
+            await _module.DisposeAsync();
+            _module = null;
+        }
     }
 }
