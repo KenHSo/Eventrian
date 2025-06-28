@@ -3,9 +3,9 @@
 namespace Eventrian.Shared.Dtos.Auth;
 
 /// <summary>
-/// Contains the refresh token required to obtain a new access token.
+/// Contains the refresh token required to log out and invalidate the session.
 /// </summary>
-public class RefreshRequestDto
+public class LogoutRequestDto
 {
     [Required]
     public required string RefreshToken { get; set; }

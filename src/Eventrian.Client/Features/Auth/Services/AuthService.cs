@@ -3,6 +3,8 @@ using Eventrian.Shared.Dtos.Auth;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 
+namespace Eventrian.Client.Features.Auth.Services;
+
 public class AuthService : IAuthService
 {
     private readonly HttpClient _http;
@@ -40,8 +42,17 @@ public class AuthService : IAuthService
     {
         _accessTokenStorage.BlockTokenUpdates(); // Prevent further updates to the access token while logging out
         _accessTokenStorage.ClearAccessToken();
-
         _tokenRefresher.Stop();
+
+        // Revoke refresh token on server to invalidate session completely
+        var refreshToken = await _refreshTokenStorage.GetRefreshTokenAsync();
+        if (!string.IsNullOrWhiteSpace(refreshToken))
+        {
+            var response = await _http.PostAsJsonAsync("api/auth/logout", 
+                new LogoutRequestDto{ RefreshToken = refreshToken });
+            if (!response.IsSuccessStatusCode)
+                Console.WriteLine($"[AuthService] Logout API failed: {response.StatusCode}");
+        }
 
         await _refreshTokenStorage.RemoveRefreshTokenAsync();
         await _authStateProvider.NotifyUserLogout();

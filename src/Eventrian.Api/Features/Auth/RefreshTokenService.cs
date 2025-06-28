@@ -50,5 +50,14 @@ public class RefreshTokenService : IRefreshTokenService
         return token?.UserId;
     }
 
+    public async Task RevokeRefreshTokensAsync(string refreshToken)
+    {
+        var token = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == refreshToken);
+        if (token is not null)
+        {
+            _db.RefreshTokens.Remove(token);
+            await _db.SaveChangesAsync();
+        }
+    }
 }
 

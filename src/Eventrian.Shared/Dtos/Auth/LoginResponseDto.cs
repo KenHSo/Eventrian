@@ -2,6 +2,9 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
+/// <summary>
+/// Response returned after a login or registration attempt.
+/// </summary>
 public class LoginResponseDto : IAuthResponse
 {
     public bool Success { get; set; } = false;

@@ -2,6 +2,9 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
+/// <summary>
+/// Represents the login credentials and preferences submitted by a user.
+/// </summary>
 public class LoginRequestDto
 {
     [Required]
@@ -12,5 +15,8 @@ public class LoginRequestDto
     [DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
 
+    /// <summary>
+    /// If true, the refresh token will be stored in Local Storage for a longer session.
+    /// </summary>
     public bool RememberMe { get; set; } = false;
 }

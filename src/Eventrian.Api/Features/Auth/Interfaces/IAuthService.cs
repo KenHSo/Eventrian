@@ -26,5 +26,12 @@ public interface IAuthService
     /// </summary>
     /// <param name="request">The refresh token request.</param>
     /// <returns>A new access and refresh token pair if successful.</returns>
-    Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto request);
+    Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto refreshRequest);
+
+    /// <summary>
+    /// Revokes a refresh token stored on the server, effectively ending the user's session.
+    /// </summary>
+    /// <param name="request">The refresh token to revoke.</param>
+    /// <returns>A <see cref="LogoutResponseDto"/> indicating success or failure.</returns>
+    Task<LogoutResponseDto> RevokeRefreshTokenAsync(LogoutRequestDto logoutRequest);
 }

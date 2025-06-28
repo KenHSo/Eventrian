@@ -9,16 +9,16 @@ namespace Eventrian.Api.Features.Auth;
 public class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IAccessTokenService _tokenService;
+    private readonly IAccessTokenService _accessTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
-        IAccessTokenService tokenService,
+        IAccessTokenService accessTokenService,
         IRefreshTokenService refreshTokenService)
     {
         _userManager = userManager;
-        _tokenService = tokenService;
+        _accessTokenService = accessTokenService;
         _refreshTokenService = refreshTokenService;
     }
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto)
@@ -31,7 +31,7 @@ public class AuthService : IAuthService
 
         IList<string> roles = await _userManager.GetRolesAsync(user);
 
-        string accessToken = _tokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
+        string accessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
         string refreshToken = await _refreshTokenService.RotateRefreshTokenAsync(user.Id);
 
         return LoginResponseDto.SuccessResponse(user.Email!, accessToken, refreshToken, "Login successful.");
@@ -64,7 +64,7 @@ public class AuthService : IAuthService
 
         IList<string> roles = await _userManager.GetRolesAsync(newUser);
 
-        string accessToken = _tokenService.CreateAccessToken(newUser.Id, newUser.Email!, newUser.UserName, roles);
+        string accessToken = _accessTokenService.CreateAccessToken(newUser.Id, newUser.Email!, newUser.UserName, roles);
         string refreshToken = await _refreshTokenService.RotateRefreshTokenAsync(newUser.Id);
 
         return LoginResponseDto.SuccessResponse(newUser.Email!, accessToken, refreshToken, "User registered successfully.");
@@ -82,12 +82,19 @@ public class AuthService : IAuthService
             return RefreshResponseDto.FailureResponse("User not found.");
 
         var roles = await _userManager.GetRolesAsync(user);
-        var newAccessToken = _tokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
+        var newAccessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
         var newRefreshToken = await _refreshTokenService.RotateRefreshTokenAsync(user.Id);
 
         return RefreshResponseDto.SuccessResponse(newAccessToken, newRefreshToken, "Token refreshed.");
     }
 
+    public async Task<LogoutResponseDto> RevokeRefreshTokenAsync(LogoutRequestDto logoutRequest)
+    {
+        var userId = await _refreshTokenService.GetUserIdForToken(logoutRequest.RefreshToken);
+        if (userId is null)
+            return LogoutResponseDto.FailureResponse("Invalid refresh token.");
 
-
+        await _refreshTokenService.RevokeRefreshTokensAsync(logoutRequest.RefreshToken);
+        return LogoutResponseDto.SuccessResponse("Logged out and refresh token invalidated.");
+    }
 }
