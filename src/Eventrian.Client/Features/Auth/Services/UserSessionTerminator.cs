@@ -14,9 +14,9 @@ public class UserSessionTerminator : IUserSessionTerminator
         _navigation = navigation;
     }
 
-    public async Task TerminateUserSessionAsync()
+    public async Task TerminateUserSessionAsync(bool fromBroadcast = false)
     {
-        await _authService.LogoutAsync();
-        _navigation.NavigateTo("/login", forceLoad: true);
+        await _authService.LogoutAsync(fromBroadcast: true);
+        _navigation.NavigateTo("/", forceLoad: true);
     }
 }

@@ -52,13 +52,27 @@ builder.Services.AddScoped<ICustomAuthStateProvider>(sp => sp.GetRequiredService
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CustomAuthStateProvider>());
 builder.Services.AddAuthorizationCore();
 
+builder.Services.AddScoped<IAuthBroadcastService, AuthBroadcastService>();
+
+
 // ---------------------
 // Start
 // ---------------------
 
 var host = builder.Build();
 
+// Initialize token refresher (restores session if refresh token exists)
 var refresher = host.Services.GetRequiredService<ITokenRefresher>();
 await refresher.InitializeAsync();
+
+// Subscribe to logout broadcast events from other tabs
+var broadcast = host.Services.GetRequiredService<IAuthBroadcastService>();
+var terminator = host.Services.GetRequiredService<IUserSessionTerminator>();
+
+broadcast.OnLogoutBroadcasted += () =>
+{
+    // Trigger logout in this tab if another tab logs out the same user
+    _ = terminator.TerminateUserSessionAsync(fromBroadcast: true);
+};
 
 await host.RunAsync();

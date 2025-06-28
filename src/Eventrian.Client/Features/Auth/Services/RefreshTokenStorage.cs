@@ -34,11 +34,32 @@ public class RefreshTokenStorage : IRefreshTokenStorage
     {
         try
         {
-            var token = await _js.InvokeAsync<string>("sessionStorage.getItem", RefreshTokenKey);
-            if (!string.IsNullOrWhiteSpace(token)) return token;
+            var sessionToken = await _js.InvokeAsync<string>("sessionStorage.getItem", RefreshTokenKey);
+            var localToken = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
 
-            token = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
-            return token;
+            // Edge case: both exist
+            if (!string.IsNullOrWhiteSpace(sessionToken) && !string.IsNullOrWhiteSpace(localToken))
+            {
+                // Prefer the persistent login
+                Console.WriteLine("[RefreshTokenStorage] Found both session and local storage tokens. Promoting to local.");
+                await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+                return localToken;
+            }
+
+            if (!string.IsNullOrWhiteSpace(sessionToken))
+            {
+                Console.WriteLine("[RefreshTokenStorage] Found sessionStorage token");
+                return sessionToken;
+            }
+
+            if (!string.IsNullOrWhiteSpace(localToken))
+            {
+                Console.WriteLine("[RefreshTokenStorage] Found localStorage token");
+                return localToken;
+            }
+
+            Console.WriteLine("[RefreshTokenStorage] No token found in either storage");
+            return null;
         }
         catch (JSException jsEx)
         {

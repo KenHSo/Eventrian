@@ -10,15 +10,17 @@ public class TokenRefresher : ITokenRefresher
     private readonly HttpClient _http;
     private readonly IAccessTokenStorage _accessTokenStorage;
     private readonly IRefreshTokenStorage _refreshTokenStorage;
+    private readonly IAuthBroadcastService _authBroadcastService;
 
     private Timer? _refreshTimer;
     private const int RefreshIntervalMinutes = 2;
 
-    public TokenRefresher(IHttpClientFactory factory, IAccessTokenStorage accessTokenStorage, IRefreshTokenStorage refreshTokenStorage)
+    public TokenRefresher(IHttpClientFactory factory, IAccessTokenStorage accessTokenStorage, IRefreshTokenStorage refreshTokenStorage, IAuthBroadcastService authBroadcastService)
     {
         _http = factory.CreateClient("UnprotectedApi");
         _accessTokenStorage = accessTokenStorage;
         _refreshTokenStorage = refreshTokenStorage;
+        _authBroadcastService = authBroadcastService;
     }
 
     public async Task InitializeAsync()
@@ -96,6 +98,10 @@ public class TokenRefresher : ITokenRefresher
         await _refreshTokenStorage.SetRefreshTokenAsync(
             result.RefreshToken!,
             await _refreshTokenStorage.HasLocalStorageTokenAsync());
+
+        // NEW: Re-register logout listener in JS so other tabs can detect logout for same user
+        var userId = TokenHelper.GetUserIdFromAccessToken(result.AccessToken!);
+        await _authBroadcastService.InitLogoutBroadcastAsync(userId);
 
         return true;
     }

@@ -10,6 +10,5 @@ public interface IUserSessionTerminator
     /// Terminates the current user session by clearing authentication state and navigating to the login page.
     /// Typically called when authentication is no longer valid (e.g., failed token refresh).
     /// </summary>
-    Task TerminateUserSessionAsync();
+    Task TerminateUserSessionAsync(bool fromBroadcast = false);
 }
-

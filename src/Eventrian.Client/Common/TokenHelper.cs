@@ -59,4 +59,14 @@ public static class TokenHelper
             return null;
         }
     }
+
+    /// <summary>
+    /// Extracts the user ID ("sub" claim) from a JWT access token.
+    /// </summary>
+    public static string GetUserIdFromAccessToken(string token)
+    {
+        var handler = new JwtSecurityTokenHandler();
+        var jwt = handler.ReadJwtToken(token);
+        return jwt.Subject ?? "";
+    }
 }
