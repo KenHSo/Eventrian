@@ -1,6 +1,5 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
 using Eventrian.Shared.Dtos.Auth;
-using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 
@@ -38,7 +37,7 @@ public class AuthService : IAuthService
     {
         _accessTokenStorage.AllowTokenUpdates();
 
-        var response = await _http.PostAsJsonAsync("api/auth/register", request);     
+        var response = await _http.PostAsJsonAsync("api/auth/register", request);
         return await HandleAuthResponseAsync(response);
     }
 
@@ -48,7 +47,7 @@ public class AuthService : IAuthService
 
         var accessToken = _accessTokenStorage.GetAccessToken();
         if (string.IsNullOrWhiteSpace(accessToken))
-        {           
+        {
             return; // Already logged out or invalid state — do nothing
         }
         // Extract user ID before clearing access token (needed for broadcast)
@@ -92,7 +91,7 @@ public class AuthService : IAuthService
             return LoginResponseDto.FailureResponse($"[{caller}] HTTP request failed with status code {response.StatusCode}.");
 
         var result = await JsonHelper.TryReadJsonAsync<LoginResponseDto>(response.Content, caller);
-        
+
         if (!TokenHelper.IsValidTokenResponse(result))
             return LoginResponseDto.FailureResponse(result?.Message ?? $"[{caller}] Invalid response format or missing tokens.");
 

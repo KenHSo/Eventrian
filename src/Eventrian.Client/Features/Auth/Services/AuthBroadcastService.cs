@@ -1,6 +1,10 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
 using Microsoft.JSInterop;
 
+namespace Eventrian.Client.Features.Auth.Services;
+
+// Future: Consider broadcasting "login" event across tabs
+// to sync sessionStorage for non-remembered sessions
 public class AuthBroadcastService : IAuthBroadcastService, IAsyncDisposable
 {
     private readonly IJSRuntime _js;
