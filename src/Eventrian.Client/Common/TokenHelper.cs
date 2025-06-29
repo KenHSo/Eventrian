@@ -65,8 +65,7 @@ public static class TokenHelper
     /// </summary>
     public static string GetUserIdFromAccessToken(string token)
     {
-        var handler = new JwtSecurityTokenHandler();
-        var jwt = handler.ReadJwtToken(token);
-        return jwt.Subject ?? ""; // Safe fallback: token creation always include 'sub'; fallback avoids null propagation if tampered
+        var jwt = TryParseJwt(token);
+        return jwt?.Subject ?? ""; // Safe fallback: token creation always include 'sub'; fallback avoids null propagation if tampered
     }
 }

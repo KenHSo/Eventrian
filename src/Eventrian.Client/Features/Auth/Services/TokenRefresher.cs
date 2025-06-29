@@ -95,9 +95,8 @@ public class TokenRefresher : ITokenRefresher
         _accessTokenStorage.SetAccessToken(result!.AccessToken!);
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken!);
 
-        await _refreshTokenStorage.SetRefreshTokenAsync(
-            result.RefreshToken!,
-            await _refreshTokenStorage.HasLocalStorageTokenAsync());
+        var rememberMe = await _refreshTokenStorage.HasLocalStorageTokenAsync();
+        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, rememberMe);
 
         // Re-register logout listener in JS so other tabs can detect logout for same user
         var userId = TokenHelper.GetUserIdFromAccessToken(result.AccessToken!);

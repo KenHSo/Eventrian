@@ -59,5 +59,25 @@ public class RefreshTokenService : IRefreshTokenService
             await _db.SaveChangesAsync();
         }
     }
+
+    // TODO: When I get more refresh tokens in DB, one for each tab of the user insted of just one, use this to remove all tokens on logout
+    // This is assuming I want to log out ALL tabs of the same user - later I can add option to log out all, or log out the tab (YAGNI)
+    //public async Task RevokeRefreshTokensAsync(string refreshToken)
+    //{
+    //    var token = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == refreshToken);
+    //    if (token is not null)
+    //    {
+    //        var userId = token.UserId;
+
+    //        var tokens = await _db.RefreshTokens
+    //            .Where(r => r.UserId == userId)
+    //            .ToListAsync();
+
+    //        _db.RefreshTokens.RemoveRange(tokens);
+    //        await _db.SaveChangesAsync();
+    //    }
+    //}
+
+
 }
 

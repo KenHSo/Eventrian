@@ -18,14 +18,10 @@ public class RefreshTokenStorage : IRefreshTokenStorage
     {
         if (rememberMe)
         {
-            // Store in localStorage only
-            await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
             await _js.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, token);
         }
         else
         {
-            // Store in sessionStorage only
-            await _js.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
             await _js.InvokeVoidAsync("sessionStorage.setItem", RefreshTokenKey, token);
         }
     }
@@ -35,30 +31,20 @@ public class RefreshTokenStorage : IRefreshTokenStorage
         try
         {
             var sessionToken = await _js.InvokeAsync<string>("sessionStorage.getItem", RefreshTokenKey);
-            var localToken = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
-
-            // Edge case: both exist
-            if (!string.IsNullOrWhiteSpace(sessionToken) && !string.IsNullOrWhiteSpace(localToken))
-            {
-                // Prefer the persistent login
-                Console.WriteLine("[RefreshTokenStorage] Found both session and local storage tokens. Promoting to local.");
-                await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
-                return localToken;
-            }
-
             if (!string.IsNullOrWhiteSpace(sessionToken))
             {
-                Console.WriteLine("[RefreshTokenStorage] Found sessionStorage token");
+                Console.WriteLine("[RefreshTokenStorage] Using sessionStorage token");
                 return sessionToken;
             }
 
+            var localToken = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
             if (!string.IsNullOrWhiteSpace(localToken))
             {
-                Console.WriteLine("[RefreshTokenStorage] Found localStorage token");
+                Console.WriteLine("[RefreshTokenStorage] Using localStorage token");
                 return localToken;
             }
 
-            Console.WriteLine("[RefreshTokenStorage] No token found in either storage");
+            Console.WriteLine("[RefreshTokenStorage] No token found");
             return null;
         }
         catch (JSException jsEx)
