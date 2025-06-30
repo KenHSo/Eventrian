@@ -3,7 +3,7 @@ using Eventrian.Api.Models;
 using Eventrian.Shared.Dtos.Auth;
 using Microsoft.AspNetCore.Identity;
 
-namespace Eventrian.Api.Features.Auth;
+namespace Eventrian.Api.Features.Auth.Services;
 
 public class AuthService : IAuthService
 {
@@ -11,10 +11,7 @@ public class AuthService : IAuthService
     private readonly IAccessTokenService _accessTokenService;
     private readonly IRefreshTokenService _refreshTokenService;
 
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        IAccessTokenService accessTokenService,
-        IRefreshTokenService refreshTokenService)
+    public AuthService(UserManager<ApplicationUser> userManager, IAccessTokenService accessTokenService, IRefreshTokenService refreshTokenService)
     {
         _userManager = userManager;
         _accessTokenService = accessTokenService;
@@ -23,11 +20,9 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto)
     {
-        var user = await _userManager.FindByEmailAsync(loginDto.Email);
+        var user = await _userManager.FindByEmailAsync(loginDto.Email);   
         if (user == null || !await _userManager.CheckPasswordAsync(user, loginDto.Password))
-        {
             return LoginResponseDto.FailureResponse("Invalid email or password.");
-        }
 
         var roles = await _userManager.GetRolesAsync(user);
 
@@ -41,9 +36,7 @@ public class AuthService : IAuthService
     {
         var existingUser = await _userManager.FindByEmailAsync(registerDto.Email);
         if (existingUser != null)
-        {
             return LoginResponseDto.FailureResponse("User already exists.");
-        }
 
         var newUser = new ApplicationUser
         {
@@ -56,8 +49,8 @@ public class AuthService : IAuthService
         var result = await _userManager.CreateAsync(newUser, registerDto.Password);
         if (!result.Succeeded)
         {
-            return LoginResponseDto.FailureResponse(
-                "Registration failed.", result.Errors.Select(e => e.Description).ToList());
+            var errors = result.Errors.Select(e => e.Description).ToList();
+            return LoginResponseDto.FailureResponse("Registration failed.", errors);
         }
 
         await _userManager.AddToRoleAsync(newUser, "Customer");
@@ -72,29 +65,29 @@ public class AuthService : IAuthService
 
     public async Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto request)
     {
-        var (isValid, newRefreshToken, userId) =
-            await _refreshTokenService.ValidateAndRotateAsync(request.RefreshToken);
-
-        if (!isValid || userId == null || newRefreshToken == null)
+        // Validate the refresh token and rotate it (issue a new one to replace the old)
+        var result = await _refreshTokenService.ValidateAndRotateAsync(request.RefreshToken);
+        if (!result.IsValid || result.UserId == null || result.NewRefreshToken == null)
             return RefreshResponseDto.FailureResponse("Invalid or expired refresh token.");
 
-        var user = await _userManager.FindByIdAsync(userId);
-        if (user is null)
+        var user = await _userManager.FindByIdAsync(result.UserId);
+        if (user == null)
             return RefreshResponseDto.FailureResponse("User not found.");
 
         var roles = await _userManager.GetRolesAsync(user);
         var newAccessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
 
-        return RefreshResponseDto.SuccessResponse(newAccessToken, newRefreshToken, "Token refreshed.");
+        return RefreshResponseDto.SuccessResponse(newAccessToken, result.NewRefreshToken, "Token refreshed.");
     }
 
     public async Task<LogoutResponseDto> RevokeRefreshTokenAsync(LogoutRequestDto logoutRequest)
     {
         var userId = await _refreshTokenService.GetUserIdForToken(logoutRequest.RefreshToken);
-        if (userId is null)
+        if (userId == null)
             return LogoutResponseDto.FailureResponse("Invalid refresh token.");
 
         await _refreshTokenService.RevokeRefreshTokensAsync(logoutRequest.RefreshToken);
+
         return LogoutResponseDto.SuccessResponse("Logged out and refresh token invalidated.");
     }
 }

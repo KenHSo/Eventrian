@@ -1,14 +1,15 @@
+using DotNetEnv;
 using Eventrian.Api.Data;
 using Eventrian.Api.Features.Auth.Interfaces;
-using Eventrian.Api.Features.Auth;
+using Eventrian.Api.Features.Auth.Services;
 using Eventrian.Api.Models;
 using Eventrian.Api.Settings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using DotNetEnv;
 
 Env.Load();
 
@@ -63,7 +64,7 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"] 
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey is not configured.")))
     };
     options.Events = new JwtBearerEvents
@@ -121,15 +122,25 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
 // -----------------------------
-// Seed initial data
+// Run startup tasks
 // -----------------------------
 
-using var scope = app.Services.CreateScope();
-var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
-await seeder.SeedAsync();
+using (var scope = app.Services.CreateScope())
+{
+    // Seed initial data
+    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+    await seeder.SeedAsync();
 
+    // TODO: Move refresh token cleanup to a scheduled background task or cron job in production
+    var tokenService = scope.ServiceProvider.GetRequiredService<IRefreshTokenService>() as RefreshTokenService;
+    if (tokenService != null)
+    {
+
+        await tokenService.RunStartupCleanupAsync();
+        await tokenService.RunDevTokenCapCleanupAsync();
+    }
+}
 
 // -----------------------------
 // Configure Middleware Pipeline

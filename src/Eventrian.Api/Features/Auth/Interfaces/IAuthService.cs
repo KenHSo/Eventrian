@@ -3,35 +3,49 @@
 namespace Eventrian.Api.Features.Auth.Interfaces;
 
 /// <summary>
-/// Service for authentication-related operations.
+/// Defines authentication-related operations such as login, registration, token refresh, and logout.
 /// </summary>
 public interface IAuthService
 {
     /// <summary>
-    /// Attempts to log in a user with the provided credentials.
+    /// Attempts to authenticate a user using the provided credentials.
     /// </summary>
-    /// <param name="loginRequest">The login request data containing user credentials.</param>
-    /// <returns>A <see cref="LoginResponseDto"/> containing authentication token and messages.</returns>
+    /// <param name="loginRequest">The <see cref="LoginRequestDto"/> containing user credentials.</param>
+    /// <returns>
+    /// A <see cref="LoginResponseDto"/> containing tokens and a message if successful; 
+    /// otherwise, an error response.
+    /// </returns>
     Task<LoginResponseDto> LoginAsync(LoginRequestDto loginRequest);
 
     /// <summary>
-    /// Registers a new user with the provided information.
+    /// Registers a new user and assigns them a default role.
     /// </summary>
-    /// <param name="registerRequest">The registration request data containing user details and password.</param>
-    /// <returns>A <see cref="LoginResponseDto"/> containing authentication token and messages.</returns>
+    /// <param name="registerRequest">The <see cref="RegisterRequestDto"/> containing new user details.</param>
+    /// <returns>
+    /// A <see cref="LoginResponseDto"/> containing tokens and success message;
+    /// otherwise, an error response with validation messages.
+    /// </returns>
     Task<LoginResponseDto> RegisterAsync(RegisterRequestDto registerRequest);
 
     /// <summary>
-    /// Attempts to refresh the access token using a valid refresh token.
+    /// Refreshes the access token using the provided refresh token.
+    /// If the refresh token is valid, issues both a new access token and a new refresh token.
     /// </summary>
-    /// <param name="request">The refresh token request.</param>
-    /// <returns>A new access and refresh token pair if successful.</returns>
+    /// <param name="refreshRequest">
+    /// The <see cref="RefreshRequestDto"/> containing the refresh token to validate.
+    /// </param>
+    /// <returns>
+    /// A <see cref="RefreshResponseDto"/> with new tokens if the refresh token is valid;
+    /// otherwise, an error message.
+    /// </returns>
     Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto refreshRequest);
 
     /// <summary>
-    /// Revokes a refresh token stored on the server, effectively ending the user's session.
+    /// Revokes a refresh token, invalidating the session it represents.
     /// </summary>
-    /// <param name="request">The refresh token to revoke.</param>
-    /// <returns>A <see cref="LogoutResponseDto"/> indicating success or failure.</returns>
+    /// <param name="logoutRequest">The <see cref="LogoutRequestDto"/> with the refresh token to revoke.</param>
+    /// <returns>
+    /// A <see cref="LogoutResponseDto"/> indicating whether the operation was successful.
+    /// </returns>
     Task<LogoutResponseDto> RevokeRefreshTokenAsync(LogoutRequestDto logoutRequest);
 }
