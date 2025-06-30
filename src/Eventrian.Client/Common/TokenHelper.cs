@@ -59,4 +59,13 @@ public static class TokenHelper
             return null;
         }
     }
+
+    /// <summary>
+    /// Extracts the user ID ("sub" claim) from a JWT access token.
+    /// </summary>
+    public static string GetUserIdFromAccessToken(string token)
+    {
+        var jwt = TryParseJwt(token);
+        return jwt?.Subject ?? ""; // Safe fallback: token creation always include 'sub'; fallback avoids null propagation if tampered
+    }
 }

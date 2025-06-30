@@ -1,14 +1,15 @@
+using DotNetEnv;
 using Eventrian.Api.Data;
 using Eventrian.Api.Features.Auth.Interfaces;
-using Eventrian.Api.Features.Auth;
+using Eventrian.Api.Features.Auth.Services;
 using Eventrian.Api.Models;
 using Eventrian.Api.Settings;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using DotNetEnv;
 
 Env.Load();
 
@@ -61,9 +62,10 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.Zero, // strict expiry (default is + 5 minutes)
         ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"] 
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]
             ?? throw new InvalidOperationException("JWT SecretKey is not configured.")))
     };
     options.Events = new JwtBearerEvents
@@ -121,15 +123,25 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-
 // -----------------------------
-// Seed initial data
+// Run startup tasks
 // -----------------------------
 
-using var scope = app.Services.CreateScope();
-var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
-await seeder.SeedAsync();
+using (var scope = app.Services.CreateScope())
+{
+    // Seed initial data
+    var seeder = scope.ServiceProvider.GetRequiredService<IdentitySeeder>();
+    await seeder.SeedAsync();
 
+    // TODO: Move refresh token cleanup to a scheduled background task or cron job in production
+    var tokenService = scope.ServiceProvider.GetRequiredService<IRefreshTokenService>() as RefreshTokenService;
+    if (tokenService != null)
+    {
+
+        await tokenService.RunStartupCleanupAsync();
+        await tokenService.RunDevTokenCapCleanupAsync();
+    }
+}
 
 // -----------------------------
 // Configure Middleware Pipeline
@@ -141,11 +153,48 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Global exception handler to catch unhandled exceptions and return JSON response
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var errorFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var exception = errorFeature?.Error;
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        if (exception != null)
+            logger.LogError(exception, "Unhandled exception");
+
+        var response = new { error = "An unexpected error occurred." };
+        await context.Response.WriteAsJsonAsync(response);
+    });
+});
+
 // Security
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Content Security Policy for Blazor WebAssembly + SignalR compatibility
+app.Use(async (context, next) =>
+{
+    var csp = string.Join(" ",
+        "default-src 'self';",                // Only allow resources from same origin
+        "script-src 'self' 'unsafe-inline';", // Required by Blazor WebAssembly
+        "style-src 'self' 'unsafe-inline';",  // Required by Blazor WebAssembly
+        "connect-src 'self' wss: https:;",    // Allow SignalR / API over HTTPS/WSS
+        "object-src 'none';",                 // Disallow plugin resources
+        "frame-ancestors 'none';"             // Disallow iframe embedding
+    );
+
+    context.Response.Headers["Content-Security-Policy"] = csp;
+
+    await next();
+});
 
 // Routing
 app.MapControllers();

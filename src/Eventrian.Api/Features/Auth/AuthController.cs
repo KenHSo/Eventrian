@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Shared.Dtos.Auth;
-using Eventrian.Api.Features.Auth.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Eventrian.Api.Features.Auth;
 
@@ -25,7 +25,6 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
 
         var response = await _authService.RegisterAsync(registerRequest);
-
         if (!response.Success)
             return BadRequest(new { errors = response.Errors ?? new List<string> { response.Message } });
 
@@ -40,7 +39,6 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
 
         var response = await _authService.LoginAsync(loginRequest);
-
         if (!response.Success)
             return Unauthorized(response.Message);
 
@@ -49,24 +47,36 @@ public class AuthController : ControllerBase
 
     [AllowAnonymous]
     [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshRequestDto request)
+    public async Task<IActionResult> RefreshTokenAsync([FromBody] RefreshRequestDto refreshRequest)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var response = await _authService.RefreshTokenAsync(request);
-
+        var response = await _authService.RefreshTokenAsync(refreshRequest);
         if (!response.Success)
             return Unauthorized(response.Message);
 
         return Ok(response);
     }
 
-    //TODO: This endpoint is for testing purposes only. REMOVE before production.
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public async Task<IActionResult> LogoutAsync([FromBody] LogoutRequestDto logoutRequest)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        var response = await _authService.RevokeRefreshTokenAsync(logoutRequest);
+        if (!response.Success)
+            return BadRequest(response.Message);
+
+        return Ok(response);
+    }
+
+    // TODO: Remove test endpoint before production
     [HttpGet("protected")]
     public IActionResult ProtectedEndpoint()
     {
-        return Ok("You have accessed a protected endpoint.");
+        return Ok("TEST OK - You have accessed a protected endpoint.");
     }
-
 }

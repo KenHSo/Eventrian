@@ -6,7 +6,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Eventrian.Api.Features.Auth;
+namespace Eventrian.Api.Features.Auth.Services;
 
 public class AccessTokenService : IAccessTokenService
 {

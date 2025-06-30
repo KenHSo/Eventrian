@@ -28,5 +28,8 @@ public interface IAuthService
     /// <summary>
     /// Clears stored access and refresh tokens and notifies the app of logout.
     /// </summary>
-    Task LogoutAsync();
+    /// <param name="fromBroadcast">
+    /// If true, the logout was triggered from another tab and should not be broadcast again.
+    /// </param>
+    Task LogoutAsync(bool fromBroadcast = false);
 }

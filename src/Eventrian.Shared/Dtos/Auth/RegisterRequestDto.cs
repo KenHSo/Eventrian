@@ -2,6 +2,10 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
+/// <summary>
+/// Represents a registration form submitted by a new user.
+/// Note: Registration automatically logs in the user.
+/// </summary>
 public class RegisterRequestDto
 {
     [Required]

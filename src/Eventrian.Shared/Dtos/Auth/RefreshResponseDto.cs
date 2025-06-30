@@ -2,6 +2,9 @@
 
 namespace Eventrian.Shared.Dtos.Auth;
 
+/// <summary>
+/// Response returned after attempting to refresh an access token.
+/// </summary>
 public class RefreshResponseDto : IAuthResponse
 {
     public bool Success { get; set; }
