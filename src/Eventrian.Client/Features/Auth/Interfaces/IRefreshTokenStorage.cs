@@ -30,4 +30,8 @@ public interface IRefreshTokenStorage
     /// Returns true if the refresh token is currently stored in localStorage.
     /// </summary>
     Task<bool> HasLocalStorageTokenAsync();
+
+    Task<bool> IsRefreshInProgressAsync();
+
+    Task SetRefreshInProgressAsync(bool isInProgress);
 }

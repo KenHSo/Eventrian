@@ -2,7 +2,6 @@
 using Eventrian.Api.Models;
 using Eventrian.Shared.Dtos.Auth;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 
 namespace Eventrian.Api.Features.Auth;
 
@@ -21,6 +20,7 @@ public class AuthService : IAuthService
         _accessTokenService = accessTokenService;
         _refreshTokenService = refreshTokenService;
     }
+
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto loginDto)
     {
         var user = await _userManager.FindByEmailAsync(loginDto.Email);
@@ -29,10 +29,10 @@ public class AuthService : IAuthService
             return LoginResponseDto.FailureResponse("Invalid email or password.");
         }
 
-        IList<string> roles = await _userManager.GetRolesAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
 
-        string accessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
-        string refreshToken = await _refreshTokenService.RotateRefreshTokenAsync(user.Id);
+        var accessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
+        var refreshToken = await _refreshTokenService.IssueRefreshTokenAsync(user.Id);
 
         return LoginResponseDto.SuccessResponse(user.Email!, accessToken, refreshToken, "Login successful.");
     }
@@ -62,20 +62,21 @@ public class AuthService : IAuthService
 
         await _userManager.AddToRoleAsync(newUser, "Customer");
 
-        IList<string> roles = await _userManager.GetRolesAsync(newUser);
+        var roles = await _userManager.GetRolesAsync(newUser);
 
-        string accessToken = _accessTokenService.CreateAccessToken(newUser.Id, newUser.Email!, newUser.UserName, roles);
-        string refreshToken = await _refreshTokenService.RotateRefreshTokenAsync(newUser.Id);
+        var accessToken = _accessTokenService.CreateAccessToken(newUser.Id, newUser.Email!, newUser.UserName, roles);
+        var refreshToken = await _refreshTokenService.IssueRefreshTokenAsync(newUser.Id);
 
         return LoginResponseDto.SuccessResponse(newUser.Email!, accessToken, refreshToken, "User registered successfully.");
     }
 
     public async Task<RefreshResponseDto> RefreshTokenAsync(RefreshRequestDto request)
     {
-        // Get userId from the refresh token storage
-        var userId = await _refreshTokenService.GetUserIdForToken(request.RefreshToken);
-        if (userId is null)
-            return RefreshResponseDto.FailureResponse("Invalid refresh token.");
+        var (isValid, newRefreshToken, userId) =
+            await _refreshTokenService.ValidateAndRotateAsync(request.RefreshToken);
+
+        if (!isValid || userId == null || newRefreshToken == null)
+            return RefreshResponseDto.FailureResponse("Invalid or expired refresh token.");
 
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null)
@@ -83,7 +84,6 @@ public class AuthService : IAuthService
 
         var roles = await _userManager.GetRolesAsync(user);
         var newAccessToken = _accessTokenService.CreateAccessToken(user.Id, user.Email!, user.UserName!, roles);
-        var newRefreshToken = await _refreshTokenService.RotateRefreshTokenAsync(user.Id);
 
         return RefreshResponseDto.SuccessResponse(newAccessToken, newRefreshToken, "Token refreshed.");
     }

@@ -11,6 +11,10 @@ public class TokenRefresher : ITokenRefresher
     private readonly IAccessTokenStorage _accessTokenStorage;
     private readonly IRefreshTokenStorage _refreshTokenStorage;
     private readonly IAuthBroadcastService _authBroadcastService;
+    
+    private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private DateTime _lastRefreshTime = DateTime.MinValue;
+    private readonly TimeSpan _minRefreshInterval = TimeSpan.FromMilliseconds(1000);
 
     private Timer? _refreshTimer;
     private const int RefreshIntervalMinutes = 2;
@@ -25,12 +29,15 @@ public class TokenRefresher : ITokenRefresher
 
     public async Task InitializeAsync()
     {
-        _accessTokenStorage.AllowTokenUpdates(); // Allow setting new access token on app start
+        _accessTokenStorage.AllowTokenUpdates();
 
+        // TryRefreshTokenAsync handles its own locking
         var success = await TryRefreshTokenAsync();
-        if (!success)
+
+        var token = _accessTokenStorage.GetAccessToken();
+        if (string.IsNullOrWhiteSpace(token))
         {
-            _accessTokenStorage.ClearAccessToken();
+            Console.WriteLine("[TokenRefresher] No access token after init");
             _http.DefaultRequestHeaders.Authorization = null;
         }
 
@@ -75,34 +82,70 @@ public class TokenRefresher : ITokenRefresher
 
     public async Task<bool> TryRefreshTokenAsync()
     {
-        var refreshToken = await _refreshTokenStorage.GetRefreshTokenAsync();
-        if (string.IsNullOrWhiteSpace(refreshToken)) return false;
-
-        var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshRequestDto { RefreshToken = refreshToken });
-        if (!response.IsSuccessStatusCode)
+        // Wait if another tab is refreshing
+        int maxWaitMs = 1000;
+        int waited = 0;
+        while (await _refreshTokenStorage.IsRefreshInProgressAsync())
         {
-            Console.WriteLine($"[TokenRefresher] Refresh request failed with status: {response.StatusCode}");
-            return false;
+            await Task.Delay(100);
+            waited += 100;
+
+            if (waited >= maxWaitMs)
+            {
+                Console.WriteLine("[TokenRefresher] Waited too long for other refresh. Giving up.");
+                return false;
+            }
         }
 
-        var result = await JsonHelper.TryReadJsonAsync<RefreshResponseDto>(response.Content);
-        if (!TokenHelper.IsValidTokenResponse(result))
+        await _refreshTokenStorage.SetRefreshInProgressAsync(true);
+        await _refreshLock.WaitAsync();
+
+        try
         {
-            Console.WriteLine("[TokenRefresher] Invalid refresh response.");
-            return false;
+            var now = DateTime.UtcNow;
+            if (now - _lastRefreshTime < _minRefreshInterval)
+            {
+                Console.WriteLine("[TokenRefresher] Skipping redundant refresh.");
+                return true;
+            }
+
+            // Fetch the latest token AFTER waiting + locking
+            var refreshToken = await _refreshTokenStorage.GetRefreshTokenAsync();
+            if (string.IsNullOrWhiteSpace(refreshToken))
+                return false;
+
+            var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshRequestDto { RefreshToken = refreshToken });
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[TokenRefresher] Refresh request failed with status: {response.StatusCode}");
+                return false;
+            }
+
+            var result = await JsonHelper.TryReadJsonAsync<RefreshResponseDto>(response.Content);
+            if (!TokenHelper.IsValidTokenResponse(result))
+            {
+                Console.WriteLine("[TokenRefresher] Invalid refresh response.");
+                return false;
+            }
+
+            _lastRefreshTime = now;
+
+            _accessTokenStorage.SetAccessToken(result!.AccessToken!);
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken!);
+
+            var rememberMe = await _refreshTokenStorage.HasLocalStorageTokenAsync();
+            await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, rememberMe);
+
+            var userId = TokenHelper.GetUserIdFromAccessToken(result.AccessToken!);
+            await _authBroadcastService.InitLogoutBroadcastAsync(userId);
+
+            return true;
         }
-
-        _accessTokenStorage.SetAccessToken(result!.AccessToken!);
-        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", result.AccessToken!);
-
-        var rememberMe = await _refreshTokenStorage.HasLocalStorageTokenAsync();
-        await _refreshTokenStorage.SetRefreshTokenAsync(result.RefreshToken!, rememberMe);
-
-        // Re-register logout listener in JS so other tabs can detect logout for same user
-        var userId = TokenHelper.GetUserIdFromAccessToken(result.AccessToken!);
-        await _authBroadcastService.InitLogoutBroadcastAsync(userId);
-
-        return true;
+        finally
+        {
+            await _refreshTokenStorage.SetRefreshInProgressAsync(false);
+            _refreshLock.Release();
+        }
     }
 
     public async Task CheckAndRefreshTokenAsync()

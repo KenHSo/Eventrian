@@ -3,23 +3,9 @@
 
 public interface IRefreshTokenService
 {
-    /// <summary>
-    /// Checks whether the given refresh token is valid for the specified user.
-    /// </summary>
-    /// <param name="userId">The unique identifier of the user.</param>
-    /// <param name="refreshToken">The refresh token to validate.</param>
-    /// <returns>True if the token is valid and not expired; otherwise, false.</returns>
-    Task<bool> ValidateRefreshTokenAsync(string userId, string refreshToken);
+    Task<string> IssueRefreshTokenAsync(string userId);
 
-    /// <summary>
-    /// Rotates the user's refresh token by generating a new one and removing all existing tokens for the user.
-    /// </summary>
-    /// <remarks>
-    /// Enforces a single-token policy: only one valid token is stored per user at a time.
-    /// </remarks>
-    /// <param name="userId">The unique identifier of the user.</param>
-    /// <returns>The newly generated refresh token.</returns>
-    Task<string> RotateRefreshTokenAsync(string userId);
+    Task<(bool IsValid, string? NewToken, string? UserId)> ValidateAndRotateAsync(string refreshToken);
 
     /// <summary>
     /// Retrieves the user ID associated with a valid and unexpired refresh token.
