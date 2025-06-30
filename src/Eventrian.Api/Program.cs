@@ -62,6 +62,7 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
+        ClockSkew = TimeSpan.Zero, // strict expiry (default is + 5 minutes)
         ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
         ValidAudience = builder.Configuration["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]
@@ -177,6 +178,23 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Content Security Policy for Blazor WebAssembly + SignalR compatibility
+app.Use(async (context, next) =>
+{
+    var csp = string.Join(" ",
+        "default-src 'self';",                // Only allow resources from same origin
+        "script-src 'self' 'unsafe-inline';", // Required by Blazor WebAssembly
+        "style-src 'self' 'unsafe-inline';",  // Required by Blazor WebAssembly
+        "connect-src 'self' wss: https:;",    // Allow SignalR / API over HTTPS/WSS
+        "object-src 'none';",                 // Disallow plugin resources
+        "frame-ancestors 'none';"             // Disallow iframe embedding
+    );
+
+    context.Response.Headers["Content-Security-Policy"] = csp;
+
+    await next();
+});
 
 // Routing
 app.MapControllers();
