@@ -152,6 +152,26 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Global exception handler to catch unhandled exceptions and return JSON response
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        var errorFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+        var exception = errorFeature?.Error;
+
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        if (exception != null)
+            logger.LogError(exception, "Unhandled exception");
+
+        var response = new { error = "An unexpected error occurred." };
+        await context.Response.WriteAsJsonAsync(response);
+    });
+});
+
 // Security
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
