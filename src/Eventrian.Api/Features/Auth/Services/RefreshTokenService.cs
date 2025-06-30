@@ -17,18 +17,20 @@ public class RefreshTokenService : IRefreshTokenService
         _logger = logger;
     }
 
-    public async Task<string> IssueRefreshTokenAsync(string userId)
+    public async Task<string> IssueRefreshTokenAsync(string userId, bool isPersistent)
     {
+        var now = DateTime.UtcNow;
+
         var newToken = new RefreshToken
         {
             UserId = userId,
             Token = Guid.NewGuid().ToString(),
-            CreatedAt = DateTime.UtcNow,
-            ExpiresAt = DateTime.UtcNow.AddDays(7)
+            CreatedAt = now,
+            ExpiresAt = now.AddDays(isPersistent ? 7 : 0.5),
+            IsPersistent = isPersistent
         };
 
         _db.RefreshTokens.Add(newToken);
-
         await _db.SaveChangesAsync();
 
         return newToken.Token;
@@ -38,13 +40,37 @@ public class RefreshTokenService : IRefreshTokenService
     {
         _logger.LogInformation("Attempting to validate and rotate refresh token.");
 
+        // Check for refresh token reuse outside overlap
+        if (await IsRefreshTokenReusedAsync(refreshToken))
+        {
+            _logger.LogWarning("Detected reuse of refresh token beyond overlap window. Forcing global logout.");
+
+            var userId = await GetUserIdForToken(refreshToken);
+            if (userId != null)
+            {
+                var allTokens = _db.RefreshTokens.Where(t => t.UserId == userId);
+                _db.RefreshTokens.RemoveRange(allTokens);
+                await _db.SaveChangesAsync();
+
+                _logger.LogInformation("Revoked all tokens for user {UserId} due to reuse.", userId);
+            }
+
+            return new TokenValidationResult
+            {
+                IsValid = false,
+                NewRefreshToken = null,
+                UserId = null,
+                IsPersistent = null
+            };
+        }
+
         var now = DateTime.UtcNow;
 
         var token = await _db.RefreshTokens
             .FirstOrDefaultAsync(r =>
                 r.Token == refreshToken &&
-                r.ExpiresAt > DateTime.UtcNow &&
-                (r.UsedAt == null || r.UsedAt > DateTime.UtcNow.AddSeconds(-5)));
+                r.ExpiresAt > now &&
+                (r.UsedAt == null || r.UsedAt > now.AddSeconds(-5)));
 
         if (token == null)
         {
@@ -53,7 +79,8 @@ public class RefreshTokenService : IRefreshTokenService
             {
                 IsValid = false,
                 NewRefreshToken = null,
-                UserId = null
+                UserId = null,
+                IsPersistent = null
             };
         }
 
@@ -77,8 +104,10 @@ public class RefreshTokenService : IRefreshTokenService
             UserId = token.UserId,
             Token = Guid.NewGuid().ToString(),
             CreatedAt = now,
-            ExpiresAt = now.AddDays(7)
+            IsPersistent = token.IsPersistent,
+            ExpiresAt = now.AddDays(token.IsPersistent ? 7 : 0.5)
         };
+
 
         _db.RefreshTokens.Add(newToken);
 
@@ -90,15 +119,18 @@ public class RefreshTokenService : IRefreshTokenService
         {
             IsValid = true,
             NewRefreshToken = newToken.Token,
-            UserId = token.UserId
+            UserId = token.UserId,
+            IsPersistent = token.IsPersistent
         };
     }
 
     public async Task<string?> GetUserIdForToken(string refreshToken)
     {
+        var now = DateTime.UtcNow;
+
         var token = await _db.RefreshTokens
             .AsNoTracking()
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.ExpiresAt > DateTime.UtcNow);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.ExpiresAt > now);
 
         return token?.UserId;
     }
@@ -112,6 +144,23 @@ public class RefreshTokenService : IRefreshTokenService
             await _db.SaveChangesAsync();
         }
     }
+
+    // --- Helpers ---
+
+    private async Task<bool> IsRefreshTokenReusedAsync(string refreshToken)
+    {
+        var now = DateTime.UtcNow;
+
+        var reusedToken = await _db.RefreshTokens
+            .FirstOrDefaultAsync(r =>
+                r.Token == refreshToken &&
+                r.UsedAt != null &&
+                r.UsedAt <= now.AddSeconds(-5));
+
+        return reusedToken != null;
+    }
+
+    // --- Dev Tasks ---
 
     // TODO: In production MOVE this to a recurring background job or scheduled task
     // TEMP: Clean up all expired or used tokens
@@ -153,5 +202,5 @@ public class RefreshTokenService : IRefreshTokenService
             }
         }
         await _db.SaveChangesAsync();
-    }   
+    }
 }

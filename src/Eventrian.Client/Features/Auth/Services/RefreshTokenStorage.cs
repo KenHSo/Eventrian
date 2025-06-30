@@ -8,8 +8,8 @@ public class RefreshTokenStorage : IRefreshTokenStorage
     private readonly IJSRuntime _js;
 
     private const string RefreshTokenKey = "refresh_token";
-    private const string StorageTypeKey = "active_token_storage"; // "session" or "local"
     private const string RefreshInProgressKey = "refresh_in_progress";
+    private const string IsPersistentKey = "is_persistent"; // "true" or "false"
 
     public RefreshTokenStorage(IJSRuntime js)
     {
@@ -21,57 +21,63 @@ public class RefreshTokenStorage : IRefreshTokenStorage
         if (rememberMe)
         {
             await _js.InvokeVoidAsync("localStorage.setItem", RefreshTokenKey, token);
-            await _js.InvokeVoidAsync("sessionStorage.setItem", StorageTypeKey, "local");
+            await _js.InvokeVoidAsync("localStorage.setItem", IsPersistentKey, "true");
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", IsPersistentKey);
         }
         else
         {
             await _js.InvokeVoidAsync("sessionStorage.setItem", RefreshTokenKey, token);
-            await _js.InvokeVoidAsync("sessionStorage.setItem", StorageTypeKey, "session");
+            await _js.InvokeVoidAsync("sessionStorage.setItem", IsPersistentKey, "false");
+            await _js.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
+            await _js.InvokeVoidAsync("localStorage.removeItem", IsPersistentKey);
         }
     }
 
     public async Task<string?> GetRefreshTokenAsync()
     {
-        var storageType = await _js.InvokeAsync<string>("sessionStorage.getItem", StorageTypeKey);
+        var isPersistent =
+            await _js.InvokeAsync<string>("localStorage.getItem", IsPersistentKey) ??
+            await _js.InvokeAsync<string>("sessionStorage.getItem", IsPersistentKey);
 
-        if (storageType == "session")
+        if (isPersistent == "true")
+            return await TryGetToken("localStorage");
+
+        if (isPersistent == "false")
+            return await TryGetToken("sessionStorage");
+
+        // Fallback: likely new tab, check both
+        var fallback = await TryGetToken("localStorage");
+        if (fallback is not null)
         {
-            var sessionToken = await _js.InvokeAsync<string>("sessionStorage.getItem", RefreshTokenKey);
-            return string.IsNullOrWhiteSpace(sessionToken) ? null : sessionToken;
+            Console.WriteLine("[RefreshTokenStorage] Fallback to localStorage succeeded.");
+            return fallback;
         }
 
-        if (storageType == "local")
-        {
-            var localToken = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
-            return string.IsNullOrWhiteSpace(localToken) ? null : localToken;
-        }
-
-        // Fallback: storageType missing (new tab?), but token might be in localStorage
-        var fallbackToken = await _js.InvokeAsync<string>("localStorage.getItem", RefreshTokenKey);
-        if (!string.IsNullOrWhiteSpace(fallbackToken))
-        {
-            Console.WriteLine("[RefreshTokenStorage] Fallback: found token in localStorage with unknown storageType.");
-            return fallbackToken;
-        }
-
-        Console.WriteLine("[RefreshTokenStorage] No valid storage type or fallback token found");
+        Console.WriteLine("[RefreshTokenStorage] No refresh token found.");
         return null;
     }
 
     public async Task RemoveRefreshTokenAsync()
     {
-        var storageType = await _js.InvokeAsync<string>("sessionStorage.getItem", StorageTypeKey);
+        var isPersistent =
+            await _js.InvokeAsync<string>("localStorage.getItem", IsPersistentKey) ??
+            await _js.InvokeAsync<string>("sessionStorage.getItem", IsPersistentKey);
 
-        if (storageType == "session")
-        {
-            await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
-        }
-        else if (storageType == "local")
+        if (isPersistent == "true")
         {
             await _js.InvokeVoidAsync("localStorage.removeItem", RefreshTokenKey);
+            await _js.InvokeVoidAsync("localStorage.removeItem", IsPersistentKey);
+        }
+        else if (isPersistent == "false")
+        {
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshTokenKey);
+            await _js.InvokeVoidAsync("sessionStorage.removeItem", IsPersistentKey);
         }
 
-        await _js.InvokeVoidAsync("sessionStorage.removeItem", StorageTypeKey);
+        // Just in case both exist (bad state), clear both
+        await _js.InvokeVoidAsync("localStorage.removeItem", RefreshInProgressKey);
+        await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshInProgressKey);
     }
 
     public async Task<bool> HasLocalStorageTokenAsync()
@@ -92,5 +98,13 @@ public class RefreshTokenStorage : IRefreshTokenStorage
             await _js.InvokeVoidAsync("sessionStorage.setItem", RefreshInProgressKey, "true");
         else
             await _js.InvokeVoidAsync("sessionStorage.removeItem", RefreshInProgressKey);
+    }
+
+    // --- Helpers ---
+
+    private async Task<string?> TryGetToken(string storage)
+    {
+        var token = await _js.InvokeAsync<string>($"{storage}.getItem", RefreshTokenKey);
+        return string.IsNullOrWhiteSpace(token) ? null : token;
     }
 }
