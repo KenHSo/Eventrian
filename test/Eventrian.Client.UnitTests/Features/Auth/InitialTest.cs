@@ -1,4 +1,4 @@
-namespace Eventrian.Client.Tests;
+namespace Eventrian.Client.UnitTests.Features.Auth;
 
 public class InitialTest
 {

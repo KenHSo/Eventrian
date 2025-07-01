@@ -3,13 +3,13 @@ using Eventrian.Shared.Dtos.Auth;
 using System.Net;
 using System.Net.Http.Json;
 
-namespace Eventrian.Api.IntegrationTests.Endpoints;
+namespace Eventrian.Api.IntegrationTests.Features.Auth;
 
-public class AuthTests : IClassFixture<TestApiFactory>
+public class AuthControllerTests : IClassFixture<TestApiFactory>
 {
     private readonly HttpClient _client;
 
-    public AuthTests(TestApiFactory factory)
+    public AuthControllerTests(TestApiFactory factory)
     {
         _client = factory.CreateClient();
     }

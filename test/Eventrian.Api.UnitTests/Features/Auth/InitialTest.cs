@@ -1,4 +1,4 @@
-namespace Eventrian.Api.Tests;
+namespace Eventrian.Api.UnitTests.Features.Auth;
 
 public class InitialTest
 {
