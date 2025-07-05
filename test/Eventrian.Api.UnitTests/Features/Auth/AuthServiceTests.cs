@@ -1,6 +1,6 @@
-﻿using Eventrian.Api.Features.Auth.Interfaces;
+﻿using Eventrian.Api.Features.Auth.Models;
+using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Api.Features.Auth.Services;
-using Eventrian.Api.Models;
 using Eventrian.Api.UnitTests.Helpers;
 using Eventrian.Shared.Dtos.Auth;
 using Microsoft.Extensions.Logging;

@@ -1,4 +1,4 @@
-﻿using Eventrian.Api.Models;
+﻿using Eventrian.Api.Features.Auth.Models;
 using Microsoft.AspNetCore.Identity;
 
 namespace Eventrian.Api.Data;

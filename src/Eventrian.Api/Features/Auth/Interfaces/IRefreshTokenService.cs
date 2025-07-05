@@ -1,4 +1,4 @@
-﻿using Eventrian.Api.Features.Auth.Models;
+﻿using Eventrian.Api.Features.Auth.Results;
 
 namespace Eventrian.Api.Features.Auth.Interfaces;
 
@@ -21,7 +21,7 @@ public interface IRefreshTokenService
     /// </summary>
     /// <param name="refreshToken">The refresh token to validate.</param>
     /// <returns>
-    /// A <see cref="TokenValidationResult"/> containing:
+    /// A <see cref="RefreshTokenValidationResult"/> containing:
     /// <list type="bullet">
     ///   <item><description><c>IsValid</c>: Whether the token was accepted.</description></item>
     ///   <item><description><c>NewRefreshToken</c>: The rotated token if successful, otherwise null.</description></item>
@@ -30,7 +30,7 @@ public interface IRefreshTokenService
     /// </list>
     /// </returns>
 
-    Task<TokenValidationResult> ValidateAndRotateAsync(string refreshToken);
+    Task<RefreshTokenValidationResult> ValidateAndRotateAsync(string refreshToken);
 
     /// <summary>
     /// Retrieves the user ID associated with a valid and unexpired refresh token.

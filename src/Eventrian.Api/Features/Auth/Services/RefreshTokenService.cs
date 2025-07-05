@@ -1,7 +1,7 @@
 ﻿using Eventrian.Api.Data;
-using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Api.Features.Auth.Models;
-using Eventrian.Api.Models;
+using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Features.Auth.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eventrian.Api.Features.Auth.Services;
@@ -36,7 +36,7 @@ public class RefreshTokenService : IRefreshTokenService
         return newToken.Token;
     }
 
-    public async Task<TokenValidationResult> ValidateAndRotateAsync(string refreshToken)
+    public async Task<RefreshTokenValidationResult> ValidateAndRotateAsync(string refreshToken)
     {
         var now = DateTime.UtcNow;
 
@@ -49,14 +49,14 @@ public class RefreshTokenService : IRefreshTokenService
         if (token == null)
         {
             _logger.LogWarning("Token validation failed: Token not found, expired, or reused too quickly.");
-            return TokenValidationResult.Failure();
+            return RefreshTokenValidationResult.Failure();
         }
 
 
         MarkTokenIfOutsideOverlap(token, now);
         var newToken = await RotateRefreshTokenAsync(token, now);
 
-        return TokenValidationResult.Success(token.UserId, newToken.Token, token.IsPersistent);
+        return RefreshTokenValidationResult.Success(token.UserId, newToken.Token, token.IsPersistent);
     }
 
 
@@ -100,8 +100,8 @@ public class RefreshTokenService : IRefreshTokenService
     /// Handles a detected replay attack by revoking all tokens for the user linked to the given token.
     /// </summary>
     /// <param name="token">The token that triggered the detection.</param>
-    /// <returns>A failed <see cref="TokenValidationResult"/> instance.</returns>
-    private async Task<TokenValidationResult> HandleReplayAttackAsync(string token)
+    /// <returns>A failed <see cref="RefreshTokenValidationResult"/> instance.</returns>
+    private async Task<RefreshTokenValidationResult> HandleReplayAttackAsync(string token)
     {
         var userId = await GetUserIdForToken(token);
         if (userId != null)
@@ -113,7 +113,7 @@ public class RefreshTokenService : IRefreshTokenService
             _logger.LogInformation("Replay attack detected - Revoked all tokens for user {UserId}.", userId);
         }
 
-        return TokenValidationResult.Failure();
+        return RefreshTokenValidationResult.Failure();
     }
 
     /// <summary>

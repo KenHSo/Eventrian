@@ -1,6 +1,6 @@
 ﻿using Eventrian.Api.Data;
+using Eventrian.Api.Features.Auth.Models;
 using Eventrian.Api.Features.Auth.Services;
-using Eventrian.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;

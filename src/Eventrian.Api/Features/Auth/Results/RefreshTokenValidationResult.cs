@@ -1,9 +1,9 @@
-﻿namespace Eventrian.Api.Features.Auth.Models;
+﻿namespace Eventrian.Api.Features.Auth.Results;
 
 /// <summary>
 /// Represents the result of validating and rotating a refresh token.
 /// </summary>
-public sealed class TokenValidationResult
+public sealed class RefreshTokenValidationResult
 {
     /// <summary>
     /// Gets or sets a value indicating whether the refresh token is valid.
@@ -33,8 +33,8 @@ public sealed class TokenValidationResult
     /// <param name="userId">The user ID associated with the token.</param>
     /// <param name="newToken">The new refresh token issued.</param>
     /// <param name="isPersistent">Whether the token is persistent.</param>
-    /// <returns>A populated <see cref="TokenValidationResult"/> indicating success.</returns>
-    public static TokenValidationResult Success(string userId, string newToken, bool isPersistent) => new()
+    /// <returns>A populated <see cref="RefreshTokenValidationResult"/> indicating success.</returns>
+    public static RefreshTokenValidationResult Success(string userId, string newToken, bool isPersistent) => new()
     {
         IsValid = true,
         NewRefreshToken = newToken,
@@ -45,8 +45,8 @@ public sealed class TokenValidationResult
     /// <summary>
     /// Creates a failed token validation result.
     /// </summary>
-    /// <returns>A <see cref="TokenValidationResult"/> indicating failure.</returns>
-    public static TokenValidationResult Failure() => new()
+    /// <returns>A <see cref="RefreshTokenValidationResult"/> indicating failure.</returns>
+    public static RefreshTokenValidationResult Failure() => new()
     {
         IsValid = false,
         NewRefreshToken = null,

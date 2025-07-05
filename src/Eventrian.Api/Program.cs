@@ -1,8 +1,8 @@
 using DotNetEnv;
 using Eventrian.Api.Data;
+using Eventrian.Api.Features.Auth.Models;
 using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Api.Features.Auth.Services;
-using Eventrian.Api.Models;
 using Eventrian.Api.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
