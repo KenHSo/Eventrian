@@ -26,4 +26,33 @@ public sealed class TokenValidationResult
     /// Indicates whether the refresh token was persistent (e.g., intended for long-term use in localStorage).
     /// </summary>
     public bool? IsPersistent { get; set; }
+
+    /// <summary>
+    /// Creates a successful token validation result.
+    /// </summary>
+    /// <param name="userId">The user ID associated with the token.</param>
+    /// <param name="newToken">The new refresh token issued.</param>
+    /// <param name="isPersistent">Whether the token is persistent.</param>
+    /// <returns>A populated <see cref="TokenValidationResult"/> indicating success.</returns>
+    public static TokenValidationResult Success(string userId, string newToken, bool isPersistent) => new()
+    {
+        IsValid = true,
+        NewRefreshToken = newToken,
+        UserId = userId,
+        IsPersistent = isPersistent
+    };
+
+    /// <summary>
+    /// Creates a failed token validation result.
+    /// </summary>
+    /// <returns>A <see cref="TokenValidationResult"/> indicating failure.</returns>
+    public static TokenValidationResult Failure() => new()
+    {
+        IsValid = false,
+        NewRefreshToken = null,
+        UserId = null,
+        IsPersistent = null
+    };
+
+
 }

@@ -11,7 +11,7 @@ public interface IRefreshTokenService
     /// Issues a new refresh token for the specified user.
     /// </summary>
     /// <param name="userId">The ID of the user to issue the token for.</param>
-    /// /// <param name="isPersistent">Whether the token should be long-lived (e.g., stored in localStorage) or short-lived (e.g., sessionStorage).</param>
+    /// <param name="isPersistent">Whether the token should be long-lived (e.g., stored in localStorage) or short-lived (e.g., sessionStorage).</param>
     /// <returns>The newly generated refresh token string.</returns>
     Task<string> IssueRefreshTokenAsync(string userId, bool isPersistent);
 
