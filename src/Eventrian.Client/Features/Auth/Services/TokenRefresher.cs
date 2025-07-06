@@ -1,4 +1,5 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
+using Eventrian.Client.Helpers;
 using Eventrian.Shared.Dtos.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
