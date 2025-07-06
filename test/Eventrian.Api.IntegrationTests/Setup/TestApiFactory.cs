@@ -1,4 +1,6 @@
 ﻿using Eventrian.Api.Data;
+using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Features.Auth.Repository;
 using Eventrian.Api.IntegrationTests.Helpers;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -52,6 +54,9 @@ public class TestApiFactory : WebApplicationFactory<Program>
             {
                 options.UseInMemoryDatabase("IntegrationTestsDb");
             });
+
+            // Register repository for RefreshTokenService
+            services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
             // Reset DB before tests
             var sp = services.BuildServiceProvider();
