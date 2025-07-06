@@ -1,4 +1,5 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
+using Eventrian.Client.Helpers;
 using System.Net;
 using System.Net.Http.Headers;
 

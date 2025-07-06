@@ -1,6 +1,8 @@
 ﻿using Eventrian.Shared.Dtos.Auth.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 
+namespace Eventrian.Client.Helpers;
+
 public static class TokenHelper
 {
     /// <summary>

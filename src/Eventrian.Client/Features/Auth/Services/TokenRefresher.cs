@@ -1,4 +1,5 @@
 ﻿using Eventrian.Client.Features.Auth.Interfaces;
+using Eventrian.Client.Helpers;
 using Eventrian.Shared.Dtos.Auth;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -80,7 +81,7 @@ public class TokenRefresher : ITokenRefresher
         _refreshTimer = null;
     }
 
-    public async Task<bool> TryRefreshTokenAsync()
+    public virtual async Task<bool> TryRefreshTokenAsync()
     {
         // Wait if another tab is refreshing
         int maxWaitMs = 1000;

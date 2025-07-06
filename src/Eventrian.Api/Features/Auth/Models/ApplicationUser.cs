@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace Eventrian.Api.Models;
+namespace Eventrian.Api.Features.Auth.Models;
 
 public class ApplicationUser : IdentityUser
 {

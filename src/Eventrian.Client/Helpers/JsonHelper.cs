@@ -1,6 +1,7 @@
-﻿using System.Net.Http;
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+
+namespace Eventrian.Client.Helpers;
 
 public static class JsonHelper
 {

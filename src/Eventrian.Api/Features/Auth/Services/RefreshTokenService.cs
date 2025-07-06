@@ -1,7 +1,7 @@
 ﻿using Eventrian.Api.Data;
-using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Api.Features.Auth.Models;
-using Eventrian.Api.Models;
+using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Features.Auth.Results;
 using Microsoft.EntityFrameworkCore;
 
 namespace Eventrian.Api.Features.Auth.Services;
@@ -36,93 +36,29 @@ public class RefreshTokenService : IRefreshTokenService
         return newToken.Token;
     }
 
-    public async Task<TokenValidationResult> ValidateAndRotateAsync(string refreshToken)
+    public async Task<RefreshTokenValidationResult> ValidateAndRotateAsync(string refreshToken)
     {
-        _logger.LogInformation("Attempting to validate and rotate refresh token.");
-
-        // Check for refresh token reuse outside overlap
-        if (await IsRefreshTokenReusedAsync(refreshToken))
-        {
-            _logger.LogWarning("Detected reuse of refresh token beyond overlap window. Forcing global logout.");
-
-            var userId = await GetUserIdForToken(refreshToken);
-            if (userId != null)
-            {
-                var allTokens = _db.RefreshTokens.Where(t => t.UserId == userId);
-                _db.RefreshTokens.RemoveRange(allTokens);
-                await _db.SaveChangesAsync();
-
-                _logger.LogInformation("Revoked all tokens for user {UserId} due to reuse.", userId);
-            }
-
-            return new TokenValidationResult
-            {
-                IsValid = false,
-                NewRefreshToken = null,
-                UserId = null,
-                IsPersistent = null
-            };
-        }
-
         var now = DateTime.UtcNow;
 
-        var token = await _db.RefreshTokens
-            .FirstOrDefaultAsync(r =>
-                r.Token == refreshToken &&
-                r.ExpiresAt > now &&
-                (r.UsedAt == null || r.UsedAt > now.AddSeconds(-5)));
+        _logger.LogInformation("Validating refresh token...");
 
+        if (await IsReplayAttackAsync(refreshToken, now))
+            return await HandleReplayAttackAsync(refreshToken);
+
+        var token = await GetValidRefreshTokenAsync(refreshToken, now);
         if (token == null)
         {
-            _logger.LogWarning("Refresh token not found, expired, or already used recently.");
-            return new TokenValidationResult
-            {
-                IsValid = false,
-                NewRefreshToken = null,
-                UserId = null,
-                IsPersistent = null
-            };
+            _logger.LogWarning("Token validation failed: Token not found, expired, or reused too quickly.");
+            return RefreshTokenValidationResult.Failure();
         }
 
-        _logger.LogInformation("Refresh token found for user {UserId}. Rotating token...", token.UserId);
 
-        var withinOverlapWindow = now - token.CreatedAt < TimeSpan.FromMinutes(2);
-        if (!withinOverlapWindow)
-        {
-            // Token is older than the overlap window: mark as used so it can't be reused
-            token.UsedAt = now;
-            _logger.LogInformation("Token exceeded overlap window. Marking as used.");
-        }
-        else
-        {
-            _logger.LogInformation("Token is within overlap window. Keeping it temporarily valid.");
-        }
+        MarkTokenIfOutsideOverlap(token, now);
+        var newToken = await RotateRefreshTokenAsync(token, now);
 
-        // Always issue a new refresh token, regardless of overlap window
-        var newToken = new RefreshToken
-        {
-            UserId = token.UserId,
-            Token = Guid.NewGuid().ToString(),
-            CreatedAt = now,
-            IsPersistent = token.IsPersistent,
-            ExpiresAt = now.AddDays(token.IsPersistent ? 7 : 0.5)
-        };
-
-
-        _db.RefreshTokens.Add(newToken);
-
-        await _db.SaveChangesAsync();
-
-        _logger.LogInformation("Refresh token rotated successfully for user {UserId}.", token.UserId);
-
-        return new TokenValidationResult
-        {
-            IsValid = true,
-            NewRefreshToken = newToken.Token,
-            UserId = token.UserId,
-            IsPersistent = token.IsPersistent
-        };
+        return RefreshTokenValidationResult.Success(token.UserId, newToken.Token, token.IsPersistent);
     }
+
 
     public async Task<string?> GetUserIdForToken(string refreshToken)
     {
@@ -147,18 +83,103 @@ public class RefreshTokenService : IRefreshTokenService
 
     // --- Helpers ---
 
-    private async Task<bool> IsRefreshTokenReusedAsync(string refreshToken)
+    /// <summary>
+    /// Determines if a token was used again outside the allowed short buffer (5 seconds),
+    /// indicating a potential replay attack.
+    /// </summary>
+    /// <param name="token">The refresh token to evaluate.</param>
+    /// <param name="now">The current UTC timestamp.</param>
+    /// <returns><c>true</c> if replay conditions are met; otherwise, <c>false</c>.</returns>
+    private async Task<bool> IsReplayAttackAsync(string token, DateTime now)
     {
-        var now = DateTime.UtcNow;
-
-        var reusedToken = await _db.RefreshTokens
-            .FirstOrDefaultAsync(r =>
-                r.Token == refreshToken &&
-                r.UsedAt != null &&
-                r.UsedAt <= now.AddSeconds(-5));
-
-        return reusedToken != null;
+        return await _db.RefreshTokens
+            .AnyAsync(t => t.Token == token && t.UsedAt != null && t.UsedAt <= now.AddSeconds(-5));
     }
+
+    /// <summary>
+    /// Handles a detected replay attack by revoking all tokens for the user linked to the given token.
+    /// </summary>
+    /// <param name="token">The token that triggered the detection.</param>
+    /// <returns>A failed <see cref="RefreshTokenValidationResult"/> instance.</returns>
+    private async Task<RefreshTokenValidationResult> HandleReplayAttackAsync(string token)
+    {
+        var userId = await GetUserIdForToken(token);
+        if (userId != null)
+        {          
+            var all = _db.RefreshTokens.Where(t => t.UserId == userId);
+            _db.RefreshTokens.RemoveRange(all);
+            await _db.SaveChangesAsync();
+
+            _logger.LogInformation("Replay attack detected - Revoked all tokens for user {UserId}.", userId);
+        }
+
+        return RefreshTokenValidationResult.Failure();
+    }
+
+    /// <summary>
+    /// Retrieves a valid refresh token that hasn't expired or been used outside the short buffer period.
+    /// </summary>
+    /// <param name="token">The token string to search for.</param>
+    /// <param name="now">The current UTC timestamp.</param>
+    /// <returns>The matching <see cref="RefreshToken"/> entity, or <c>null</c> if not valid.</returns>
+    private async Task<RefreshToken?> GetValidRefreshTokenAsync(string token, DateTime now)
+    {
+        return await _db.RefreshTokens.FirstOrDefaultAsync(r =>
+            r.Token == token &&
+            r.ExpiresAt > now &&
+            (r.UsedAt == null || r.UsedAt > now.AddSeconds(-5)));
+    }
+
+    /// <summary>
+    /// Marks the token as used if it's older than the overlap window (2 minutes),
+    /// indicating it's no longer safe to reuse during rotation.
+    /// </summary>
+    /// <param name="token">The token entity to update.</param>
+    /// <param name="now">The current UTC timestamp.</param>
+    private void MarkTokenIfOutsideOverlap(RefreshToken token, DateTime now)
+    {
+        var withinOverlap = now - token.CreatedAt < TimeSpan.FromMinutes(2);
+
+        if (!withinOverlap)
+        {
+            token.UsedAt = now;
+            _logger.LogInformation("Token exceeded overlap window. Marked as used.");
+        }
+        else
+        {
+            _logger.LogInformation("Token is within overlap window — keeping temporarily valid.");
+        }
+    }
+
+    /// <summary>
+    /// Rotates a refresh token by issuing a new one based on the old token's properties.
+    /// </summary>
+    /// <param name="oldToken">The token being rotated (exchanged).</param>
+    /// <param name="now">The current UTC timestamp.</param>
+    /// <returns>The newly created <see cref="RefreshToken"/> entity.</returns>
+    private async Task<RefreshToken> RotateRefreshTokenAsync(RefreshToken oldToken, DateTime now)
+    {
+        var newToken = new RefreshToken
+        {
+            UserId = oldToken.UserId,
+            Token = Guid.NewGuid().ToString(),
+            CreatedAt = now,
+            IsPersistent = oldToken.IsPersistent,
+            ExpiresAt = now.AddDays(oldToken.IsPersistent ? 7 : 0.5)
+        };
+
+        _db.RefreshTokens.Add(newToken);
+        await _db.SaveChangesAsync();
+
+        _logger.LogInformation("Rotated refresh token for user {UserId}.", oldToken.UserId);
+        return newToken;
+    }
+
+
+
+
+
+
 
     // --- Dev Tasks ---
 
@@ -186,7 +207,12 @@ public class RefreshTokenService : IRefreshTokenService
     // TEMP: Enforces token limit (10 per user) in DB to prevent flooding local DB in testing
     public async Task RunDevTokenCapCleanupAsync(int maxTokensPerUser = 10)
     {
-        var userIds = await _db.RefreshTokens.Select(t => t.UserId).Distinct().ToListAsync();
+        var userIds = await _db.RefreshTokens
+            .Where(t => t.UserId != null)
+            .Select(t => t.UserId!)
+            .Distinct()
+            .ToListAsync();
+
         foreach (var userId in userIds)
         {
             var tokens = await _db.RefreshTokens

@@ -3,7 +3,7 @@ using Eventrian.Shared.Dtos.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Eventrian.Api.Features.Auth;
+namespace Eventrian.Api.Features.Auth.Controllers;
 
 [Authorize]
 [Route("api/[controller]")]

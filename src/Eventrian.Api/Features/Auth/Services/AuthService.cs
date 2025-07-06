@@ -1,5 +1,5 @@
-﻿using Eventrian.Api.Features.Auth.Interfaces;
-using Eventrian.Api.Models;
+﻿using Eventrian.Api.Features.Auth.Models;
+using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Shared.Constants;
 using Eventrian.Shared.Dtos.Auth;
 using Microsoft.AspNetCore.Identity;
