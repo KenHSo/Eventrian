@@ -1,5 +1,7 @@
 ﻿using Eventrian.Api.Data;
+using Eventrian.Api.Features.Auth.Interfaces;
 using Eventrian.Api.Features.Auth.Models;
+using Eventrian.Api.Features.Auth.Repository;
 using Eventrian.Api.Features.Auth.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -18,14 +20,22 @@ public class RefreshTokenServiceTests
         return new AppDbContext(options);
     }
 
+    private static RefreshTokenService CreateRefreshTokenService(AppDbContext dbContext)
+    {
+        var refreshTokenRepo = new RefreshTokenRepository(dbContext);
+        var logger = Mock.Of<ILogger<RefreshTokenService>>();
+        
+        return new RefreshTokenService(refreshTokenRepo, logger);
+    }
+
+
     // Creates and stores a token (positive case)
     [Fact]
     public async Task IssueRefreshTokenAsync_CreatesAndReturnsToken()
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var loggerMock = new Mock<ILogger<RefreshTokenService>>();
-        var service = new RefreshTokenService(dbContext, loggerMock.Object);
+        var service = CreateRefreshTokenService(dbContext);
 
         var userId = "test-user-id";
         var isPersistent = true;
@@ -46,8 +56,7 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var logger = Mock.Of<ILogger<RefreshTokenService>>();
-        var service = new RefreshTokenService(dbContext, logger);
+        var service = CreateRefreshTokenService(dbContext);
 
         var userId = "user-123";
         var token = await service.IssueRefreshTokenAsync(userId, isPersistent: false);
@@ -64,8 +73,7 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var logger = Mock.Of<ILogger<RefreshTokenService>>();
-        var service = new RefreshTokenService(dbContext, logger);
+        var service = CreateRefreshTokenService(dbContext);
 
         // Act
         var result = await service.GetUserIdForToken("nonexistent-token");
@@ -79,7 +87,7 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var service = new RefreshTokenService(dbContext, Mock.Of<ILogger<RefreshTokenService>>());
+        var service = CreateRefreshTokenService(dbContext);
 
         var userId = "valid-user";
         var originalToken = await service.IssueRefreshTokenAsync(userId, isPersistent: false);
@@ -100,7 +108,7 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var service = new RefreshTokenService(dbContext, Mock.Of<ILogger<RefreshTokenService>>());
+        var service = CreateRefreshTokenService(dbContext);
 
         var userId = "user-1";
         var token = await service.IssueRefreshTokenAsync(userId, isPersistent: false);
@@ -118,7 +126,7 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var dbContext = CreateInMemoryDbContext();
-        var service = new RefreshTokenService(dbContext, Mock.Of<ILogger<RefreshTokenService>>());
+        var service = CreateRefreshTokenService(dbContext);
 
         var fakeToken = "nonexistent-token";
 
@@ -136,12 +144,13 @@ public class RefreshTokenServiceTests
     public async Task RunStartupCleanupAsync_RemovesExpiredAndUsedTokens_AndKeepsValidOnes()
     {
         // Arrange
-        var db = CreateInMemoryDbContext();
-        var service = new RefreshTokenService(db, Mock.Of<ILogger<RefreshTokenService>>());
+        var dbContext = CreateInMemoryDbContext();
+        var service = CreateRefreshTokenService(dbContext);
+        
         var now = DateTime.UtcNow;
 
         // Token 1: expired
-        db.RefreshTokens.Add(new RefreshToken
+        dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user1",
             Token = "expired-token",
@@ -151,7 +160,7 @@ public class RefreshTokenServiceTests
         });
 
         // Token 2: used and older than overlap window
-        db.RefreshTokens.Add(new RefreshToken
+        dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user2",
             Token = "used-old-token",
@@ -162,7 +171,7 @@ public class RefreshTokenServiceTests
         });
 
         // Token 3: valid, unexpired, unused
-        db.RefreshTokens.Add(new RefreshToken
+        dbContext.RefreshTokens.Add(new RefreshToken
         {
             UserId = "user3",
             Token = "valid-token",
@@ -171,13 +180,13 @@ public class RefreshTokenServiceTests
             IsPersistent = false
         });
 
-        await db.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
 
         // Act
         await service.RunStartupCleanupAsync();
 
         // Assert
-        var tokens = await db.RefreshTokens.Select(t => t.Token).ToListAsync();
+        var tokens = await dbContext.RefreshTokens.Select(t => t.Token).ToListAsync();
         Assert.Contains("valid-token", tokens);
         Assert.DoesNotContain("expired-token", tokens);
         Assert.DoesNotContain("used-old-token", tokens);
@@ -187,8 +196,8 @@ public class RefreshTokenServiceTests
     public async Task RunDevTokenCapCleanupAsync_RemovesOldestTokens_WhenOverLimit()
     {
         // Arrange
-        var db = CreateInMemoryDbContext();
-        var service = new RefreshTokenService(db, Mock.Of<ILogger<RefreshTokenService>>());
+        var dbContext = CreateInMemoryDbContext();
+        var service = CreateRefreshTokenService(dbContext);
 
         var userId = "overloaded-user";
         var now = DateTime.UtcNow;
@@ -196,7 +205,7 @@ public class RefreshTokenServiceTests
         // Add 15 tokens for the same user (oldest first)
         for (int i = 0; i < 15; i++)
         {
-            db.RefreshTokens.Add(new RefreshToken
+            dbContext.RefreshTokens.Add(new RefreshToken
             {
                 UserId = userId,
                 Token = $"token-{i}",
@@ -206,13 +215,13 @@ public class RefreshTokenServiceTests
             });
         }
 
-        await db.SaveChangesAsync();
+        await dbContext.SaveChangesAsync();
 
         // Act
         await service.RunDevTokenCapCleanupAsync();
 
         // Assert
-        var userTokens = await db.RefreshTokens
+        var userTokens = await dbContext.RefreshTokens
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync();

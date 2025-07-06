@@ -8,12 +8,18 @@ namespace Eventrian.Api.Features.Auth.Services;
 
 public class RefreshTokenService : IRefreshTokenService
 {
-    private readonly AppDbContext _db;
+    private readonly IRefreshTokenRepository _repo;
     private readonly ILogger<RefreshTokenService> _logger;
 
-    public RefreshTokenService(AppDbContext db, ILogger<RefreshTokenService> logger)
+    private static readonly TimeSpan ReplayAttackWindow = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan OverlapWindow = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan PersistentLifespan = TimeSpan.FromDays(7);
+    private static readonly TimeSpan SessionLifespan = TimeSpan.FromHours(12);
+
+
+    public RefreshTokenService(IRefreshTokenRepository repo, ILogger<RefreshTokenService> logger)
     {
-        _db = db;
+        _repo = repo;
         _logger = logger;
     }
 
@@ -25,13 +31,13 @@ public class RefreshTokenService : IRefreshTokenService
         {
             UserId = userId,
             Token = Guid.NewGuid().ToString(),
+            IsPersistent = isPersistent,
             CreatedAt = now,
-            ExpiresAt = now.AddDays(isPersistent ? 7 : 0.5),
-            IsPersistent = isPersistent
+            ExpiresAt = now.Add(isPersistent ? PersistentLifespan : SessionLifespan),
         };
 
-        _db.RefreshTokens.Add(newToken);
-        await _db.SaveChangesAsync();
+        _repo.Add(newToken);
+        await _repo.SaveChangesAsync();
 
         return newToken.Token;
     }
@@ -52,63 +58,60 @@ public class RefreshTokenService : IRefreshTokenService
             return RefreshTokenValidationResult.Failure();
         }
 
-
         MarkTokenIfOutsideOverlap(token, now);
         var newToken = await RotateRefreshTokenAsync(token, now);
 
         return RefreshTokenValidationResult.Success(token.UserId, newToken.Token, token.IsPersistent);
     }
 
-
     public async Task<string?> GetUserIdForToken(string refreshToken)
     {
         var now = DateTime.UtcNow;
-
-        var token = await _db.RefreshTokens
-            .AsNoTracking()
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken && rt.ExpiresAt > now);
-
-        return token?.UserId;
+        return await _repo.GetUserIdForTokenAsync(refreshToken, now);
     }
 
     public async Task RevokeRefreshTokensAsync(string refreshToken)
     {
-        var token = await _db.RefreshTokens.FirstOrDefaultAsync(r => r.Token == refreshToken);
+        var token = await _repo.FindByTokenAsync(refreshToken);
         if (token is not null)
         {
-            _db.RefreshTokens.Remove(token);
-            await _db.SaveChangesAsync();
+            _repo.Remove(token);
+            await _repo.SaveChangesAsync();
         }
     }
+
 
     // --- Helpers ---
 
     /// <summary>
-    /// Determines if a token was used again outside the allowed short buffer (5 seconds),
-    /// indicating a potential replay attack.
+    /// Checks if the given token was already used and the reuse falls outside the allowed short replay window.
     /// </summary>
     /// <param name="token">The refresh token to evaluate.</param>
-    /// <param name="now">The current UTC timestamp.</param>
-    /// <returns><c>true</c> if replay conditions are met; otherwise, <c>false</c>.</returns>
+    /// <param name="now">The current UTC time for comparison.</param>
+    /// <returns>True if a replay attack is suspected; otherwise, false.</returns>
     private async Task<bool> IsReplayAttackAsync(string token, DateTime now)
     {
-        return await _db.RefreshTokens
-            .AnyAsync(t => t.Token == token && t.UsedAt != null && t.UsedAt <= now.AddSeconds(-5));
+        var refreshToken = await _repo.FindByTokenAsync(token);
+        
+        if (refreshToken?.UsedAt == null)
+            return false;
+
+        return refreshToken.UsedAt <= now - ReplayAttackWindow;
     }
 
     /// <summary>
-    /// Handles a detected replay attack by revoking all tokens for the user linked to the given token.
+    /// Handles a suspected replay attack by revoking all refresh tokens for the user associated with the given token.
     /// </summary>
-    /// <param name="token">The token that triggered the detection.</param>
-    /// <returns>A failed <see cref="RefreshTokenValidationResult"/> instance.</returns>
+    /// <param name="token">The refresh token that triggered the detection.</param>
+    /// <returns>A failed <see cref="RefreshTokenValidationResult"/>.</returns>
     private async Task<RefreshTokenValidationResult> HandleReplayAttackAsync(string token)
     {
         var userId = await GetUserIdForToken(token);
         if (userId != null)
-        {          
-            var all = _db.RefreshTokens.Where(t => t.UserId == userId);
-            _db.RefreshTokens.RemoveRange(all);
-            await _db.SaveChangesAsync();
+        {
+            var all = await _repo.GetExcessTokensAsync(userId, 0); // ReplayAttack - So set maxtokens = 0 (get all and remove them) 
+            _repo.RemoveRange(all);
+            await _repo.SaveChangesAsync();
 
             _logger.LogInformation("Replay attack detected - Revoked all tokens for user {UserId}.", userId);
         }
@@ -117,28 +120,30 @@ public class RefreshTokenService : IRefreshTokenService
     }
 
     /// <summary>
-    /// Retrieves a valid refresh token that hasn't expired or been used outside the short buffer period.
+    /// Retrieves a refresh token that is not expired and was not used outside the allowed replay window.
     /// </summary>
-    /// <param name="token">The token string to search for.</param>
-    /// <param name="now">The current UTC timestamp.</param>
-    /// <returns>The matching <see cref="RefreshToken"/> entity, or <c>null</c> if not valid.</returns>
+    /// <param name="token">The refresh token string to validate.</param>
+    /// <param name="now">The current UTC time.</param>
+    /// <returns>The valid <see cref="RefreshToken"/> if eligible for reuse or rotation; otherwise, null.</returns>
     private async Task<RefreshToken?> GetValidRefreshTokenAsync(string token, DateTime now)
     {
-        return await _db.RefreshTokens.FirstOrDefaultAsync(r =>
-            r.Token == token &&
-            r.ExpiresAt > now &&
-            (r.UsedAt == null || r.UsedAt > now.AddSeconds(-5)));
+        var result = await _repo.FindByTokenAsync(token);
+        if (result == null) return null;
+
+        var usedOutsideReplayWindow = result.UsedAt != null && result.UsedAt <= now - ReplayAttackWindow;
+        var expired = result.ExpiresAt <= now;
+
+        return (usedOutsideReplayWindow || expired) ? null : result;
     }
 
     /// <summary>
-    /// Marks the token as used if it's older than the overlap window (2 minutes),
-    /// indicating it's no longer safe to reuse during rotation.
+    /// Marks a refresh token as used if it falls outside the allowed overlap window for safe reuse.
     /// </summary>
-    /// <param name="token">The token entity to update.</param>
-    /// <param name="now">The current UTC timestamp.</param>
+    /// <param name="token">The refresh token entity.</param>
+    /// <param name="now">The current UTC time.</param>
     private void MarkTokenIfOutsideOverlap(RefreshToken token, DateTime now)
     {
-        var withinOverlap = now - token.CreatedAt < TimeSpan.FromMinutes(2);
+        var withinOverlap = now - token.CreatedAt < OverlapWindow;
 
         if (!withinOverlap)
         {
@@ -152,11 +157,11 @@ public class RefreshTokenService : IRefreshTokenService
     }
 
     /// <summary>
-    /// Rotates a refresh token by issuing a new one based on the old token's properties.
+    /// Issues a new refresh token based on the properties of a previously valid one.
     /// </summary>
-    /// <param name="oldToken">The token being rotated (exchanged).</param>
-    /// <param name="now">The current UTC timestamp.</param>
-    /// <returns>The newly created <see cref="RefreshToken"/> entity.</returns>
+    /// <param name="oldToken">The refresh token being rotated.</param>
+    /// <param name="now">The current UTC time.</param>
+    /// <returns>The newly created <see cref="RefreshToken"/>.</returns>
     private async Task<RefreshToken> RotateRefreshTokenAsync(RefreshToken oldToken, DateTime now)
     {
         var newToken = new RefreshToken
@@ -165,15 +170,16 @@ public class RefreshTokenService : IRefreshTokenService
             Token = Guid.NewGuid().ToString(),
             CreatedAt = now,
             IsPersistent = oldToken.IsPersistent,
-            ExpiresAt = now.AddDays(oldToken.IsPersistent ? 7 : 0.5)
+            ExpiresAt = now.Add(oldToken.IsPersistent ? PersistentLifespan : SessionLifespan) // if oldToken was persistent, the new token should be as well
         };
 
-        _db.RefreshTokens.Add(newToken);
-        await _db.SaveChangesAsync();
+        _repo.Add(newToken);
+        await _repo.SaveChangesAsync();
 
         _logger.LogInformation("Rotated refresh token for user {UserId}.", oldToken.UserId);
         return newToken;
     }
+
 
 
 
@@ -188,45 +194,34 @@ public class RefreshTokenService : IRefreshTokenService
     public async Task RunStartupCleanupAsync()
     {
         var now = DateTime.UtcNow;
-        var overlapWindow = TimeSpan.FromMinutes(2);
 
-        var tokensToRemove = await _db.RefreshTokens
-            .Where(t =>
-                t.ExpiresAt <= now ||
-                t.UsedAt != null && t.UsedAt <= now - overlapWindow)
-            .ToListAsync();
-
-        if (tokensToRemove.Count > 0)
+        var tokens = await _repo.GetExpiredOrUsedTokensAsync(now, OverlapWindow);
+        if (tokens.Count > 0)
         {
-            _db.RefreshTokens.RemoveRange(tokensToRemove);
-            await _db.SaveChangesAsync();
-            _logger.LogInformation("Startup cleanup: removed {Count} expired/used tokens.", tokensToRemove.Count);
+            _repo.RemoveRange(tokens);
+            await _repo.SaveChangesAsync();
+
+            _logger.LogInformation("Startup cleanup: removed {Count} expired/used tokens.", tokens.Count);
         }
     }
+
     // TODO: In production MOVE this to a recurring background job or scheduled task
     // TEMP: Enforces token limit (10 per user) in DB to prevent flooding local DB in testing
     public async Task RunDevTokenCapCleanupAsync(int maxTokensPerUser = 10)
     {
-        var userIds = await _db.RefreshTokens
-            .Where(t => t.UserId != null)
-            .Select(t => t.UserId!)
-            .Distinct()
-            .ToListAsync();
+        var userIds = await _repo.GetAllUserIdsWithTokensAsync();
 
         foreach (var userId in userIds)
         {
-            var tokens = await _db.RefreshTokens
-                .Where(t => t.UserId == userId)
-                .OrderByDescending(t => t.CreatedAt)
-                .Skip(maxTokensPerUser)
-                .ToListAsync();
-
+            var tokens = await _repo.GetExcessTokensAsync(userId, maxTokensPerUser);
             if (tokens.Count > 0)
             {
-                _db.RefreshTokens.RemoveRange(tokens);
+                _repo.RemoveRange(tokens);
                 _logger.LogInformation("Dev cleanup: removed {Count} excess tokens for user {UserId}", tokens.Count, userId);
             }
         }
-        await _db.SaveChangesAsync();
+
+        await _repo.SaveChangesAsync();
     }
+
 }
