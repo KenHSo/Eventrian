@@ -1,7 +1,7 @@
 ﻿using Eventrian.Client.Helpers;
+using Eventrian.Client.UnitTests.Helpers;
 using Eventrian.Shared.Dtos.Auth.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
-using Xunit;
 
 namespace Eventrian.Client.UnitTests.Features.Auth;
 
@@ -144,11 +144,7 @@ public class TokenHelperTests
     public void GetUserIdFromAccessToken_ReturnsSubjectClaim()
     {
         // Arrange
-        var token = new JwtSecurityToken(claims: new[]
-        {
-        new System.Security.Claims.Claim("sub", "user-123")
-    });
-        var tokenStr = new JwtSecurityTokenHandler().WriteToken(token);
+        var tokenStr = JwtTestFactory.GenerateTestAccessToken("user-123");
 
         // Act
         var result = TokenHelper.GetUserIdFromAccessToken(tokenStr);

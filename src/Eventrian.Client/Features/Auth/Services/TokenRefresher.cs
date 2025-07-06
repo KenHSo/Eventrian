@@ -81,7 +81,7 @@ public class TokenRefresher : ITokenRefresher
         _refreshTimer = null;
     }
 
-    public async Task<bool> TryRefreshTokenAsync()
+    public virtual async Task<bool> TryRefreshTokenAsync()
     {
         // Wait if another tab is refreshing
         int maxWaitMs = 1000;
