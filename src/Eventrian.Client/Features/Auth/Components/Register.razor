@@ -1,0 +1,47 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Eventrian.Shared.Dtos.Auth
+@inject IJSRuntime JS
+
+<EditForm Model="@RegisterModel" OnValidSubmit="@HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div>
+        <label>First Name:</label>
+        <InputText @bind-Value="RegisterModel.FirstName" class="form-control" />
+    </div>
+
+    <div>
+        <label>Last Name:</label>
+        <InputText @bind-Value="RegisterModel.LastName" class="form-control" />
+    </div>
+
+    <div>
+        <label>Email:</label>
+        <InputText @bind-Value="RegisterModel.Email" class="form-control" />
+    </div>
+
+    <div>
+        <label>Password:</label>
+        <InputText @bind-Value="RegisterModel.Password" type="password" class="form-control" />
+    </div>
+
+    <div>
+        <label>Confirm Password:</label>
+        <InputText @bind-Value="RegisterModel.ConfirmPassword" type="password" class="form-control" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Register</button>
+</EditForm>
+
+@code {
+    [Parameter]
+    public EventCallback<RegisterRequestDto> OnRegisterSubmit { get; set; }
+
+    private RegisterRequestDto RegisterModel { get; set; } = new();
+
+    private async Task HandleValidSubmit()
+    {
+        await OnRegisterSubmit.InvokeAsync(RegisterModel);
+    }
+}
