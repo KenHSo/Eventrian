@@ -1,7 +1,8 @@
 using DotNetEnv;
 using Eventrian.Api.Data;
-using Eventrian.Api.Features.Auth.Models;
 using Eventrian.Api.Features.Auth.Interfaces;
+using Eventrian.Api.Features.Auth.Models;
+using Eventrian.Api.Features.Auth.Repository;
 using Eventrian.Api.Features.Auth.Services;
 using Eventrian.Api.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -93,6 +94,7 @@ builder.Services.AddScoped<IdentitySeeder>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAccessTokenService, AccessTokenService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
 // Authorization
 builder.Services.AddAuthorization(options =>
