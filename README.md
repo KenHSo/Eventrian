@@ -1,6 +1,6 @@
 # Eventrian
 
-[![Build and Test](https://github.com/KenHSo/Eventrian/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/KenHSo/Eventrian/actions/workflows/build-and-test.yml)
+[![Build and Test](https://img.shields.io/github/actions/workflow/status/KenHSo/Eventrian/build-and-test.yml?label=build&logo=github)](https://github.com/KenHSo/Eventrian/actions/workflows/build-and-test.yml)
 [![Version](https://img.shields.io/github/v/tag/KenHSo/Eventrian?label=version&sort=semver)](https://github.com/KenHSo/Eventrian/releases)
 
 **Eventrian** is a modern web application for discovering and purchasing tickets to events.  
