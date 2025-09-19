@@ -9,6 +9,10 @@ It offers a simple and responsive experience for users, with support for both in
 
 Eventrian is a full-stack .NET project designed to explore real-world development patterns, secure architecture, and modern deployment workflows.
 
+## Project Status
+Eventrian is currently under active development.  
+The core authentication system (JWT, Identity, refresh tokens) is implemented, with additional features planned.  
+
 ### Demo Experience
 
 The application will include a demo mode that lets visitors explore different user roles:
@@ -27,7 +31,7 @@ All demo data will be temporary and reset between sessions to ensure system inte
 - Role-based access for users and admins  
 - Admin dashboard for event and user management  
 - Real-time updates and communication using SignalR   
-- Integration with external APIs (e.g., event data and AI-powered chat)
+- Integration with external APIs (e.g. event data)
 - CI/CD pipeline for automated deployment  
 - API security: rate limiting, response caching, CORS, input validation  
 
@@ -56,3 +60,11 @@ All demo data will be temporary and reset between sessions to ensure system inte
 - Feature-based folder structure  
 - Clean separation of concerns across API, Client, and Shared projects  
 - Modular design for maintainability and scalability
+- Clean Architecture principles to support testability and maintainability
+
+## Learning Focus
+Through Eventrian, I am applying and expanding my knowledge of:
+- Secure authentication and authorization (JWT, refresh tokens, role-based access)
+- CI/CD workflows with GitHub Actions
+- Containerization and deployment with Docker + Azure
+- Designing scalable APIs with ASP.NET Core
