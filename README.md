@@ -2,69 +2,41 @@
 
 [![Build and Test](https://github.com/KenHSo/Eventrian/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/KenHSo/Eventrian/actions/workflows/build-and-test.yml)
 
-**Eventrian** is a modern web application for discovering and purchasing tickets to events.  
-It offers a simple and responsive experience for users, with support for both internally created events and public events retrieved from external sources.
+**Learning project (2025)**  
+Focused exploration of authentication and secure session handling in .NET.  
+Implements short-lived access tokens, refresh tokens, and token rotation using ASP.NET Identity and JWT, with automated tests and a clean architectural structure.
 
-## Project Goals
+---
 
-Eventrian is a full-stack .NET project designed to explore real-world development patterns, secure architecture, and modern deployment workflows.
+## Purpose
+Eventrian was created as a personal learning project to gain hands-on experience with building and testing secure authentication systems in ASP.NET Core.  
+While originally intended as a full event management platform, the focus shifted entirely to implementing and hardening the authentication subsystem.
 
-## Project Status
-Eventrian is currently under active development.  
-The core authentication system (JWT, Identity, refresh tokens) is implemented, with additional features planned.  
+---
 
-### Demo Experience
+## Implemented Features
+- ASP.NET Identity with custom user model  
+- JWT authentication with short-lived access and refresh tokens  
+- Token rotation for enhanced session security  
+- Multi-session handling across browser tabs with user-specific logout broadcast  
+- Role-based authorization (roles: Admin, Customer; policies: AdminOnly, CustomerOnly)  
+- Unit and integration tests for authentication and token flows  
+- Automated build and test pipeline with GitHub Actions  
+- Clean Architecture separation between API, Application, and Infrastructure layers
 
-The application will include a demo mode that lets visitors explore different user roles:
-
-- **Demo Admin**: Access a dashboard for managing events and users  
-- **Demo User**: Browse events and simulate ticket purchases
-- **Demo Chat**: Real-time chat between user and admin, powered by AI to simulate live support conversations  
-
-All demo data will be temporary and reset between sessions to ensure system integrity.
-
-
-### Features
-
-- Browse and search events from internal and external sources  
-- Purchase tickets through a streamlined user flow  
-- Role-based access for users and admins  
-- Admin dashboard for event and user management  
-- Real-time updates and communication using SignalR   
-- Integration with external APIs (e.g. event data)
-- CI/CD pipeline for automated deployment  
-- API security: rate limiting, response caching, CORS, input validation  
-
+---
 
 ## Technologies
+- **Backend / Auth / Data:** ASP.NET Core Web API, Identity, JWT, EF Core, SQL Server (LocalDB)  
+- **Testing / Infrastructure / Architecture:** xUnit, WebApplicationFactory, GitHub Actions, Clean Architecture
 
-### Frontend
-- Blazor WebAssembly
-
-### Backend
-- ASP.NET Core Web API  
-- Entity Framework Core  
-- SQL Server
-
-### Shared
-- Class library for DTOs and models
-
-### Infrastructure
-- Swagger/OpenAPI for documentation  
-- Secure environment configuration using `.env` files and secrets 
-- Docker + containerized deployment  
-- Hosting: Azure, AWS, Linode, or similar  
-- CI/CD via GitHub Actions
-
-## Architecture
-- Feature-based folder structure  
-- Clean separation of concerns across API, Client, and Shared projects  
-- Modular design for maintainability and scalability
-- Clean Architecture principles to support testability and maintainability
+---
 
 ## Learning Focus
-Through Eventrian, I am applying and expanding my knowledge of:
-- Secure authentication and authorization (JWT, refresh tokens, role-based access)
-- CI/CD workflows with GitHub Actions
-- Containerization and deployment with Docker + Azure
-- Designing scalable APIs with ASP.NET Core
+Through Eventrian, I explored:
+- Implementing secure authentication and token lifecycle management in .NET  
+- Integrating Identity and refresh token rotation  
+- Managing user sessions across multiple browser tabs  
+- Structuring and testing authentication flows  
+- Applying Clean Architecture principles for maintainability  
+- Using continuous integration to ensure build and test consistency
